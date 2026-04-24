@@ -267,7 +267,7 @@ export default function Home() {
         <div className="text-center mb-6 z-10 px-4 flex flex-col items-center relative mt-4">
           <div className="relative">
             <div className="absolute inset-0 bg-[#F29188] blur-3xl opacity-20 rounded-full animate-pulse"></div>
-            <img src="/logo.jpg" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
+            <img src="/logo.png" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
           </div>
         </div>
 
