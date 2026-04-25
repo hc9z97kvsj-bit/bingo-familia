@@ -286,9 +286,6 @@ export default function Home() {
   const uniqueZones = ['Todas', ...Array.from(new Set(activeAds.map(a => a.zone)))];
   const displayedAds = activeAds.filter(a => selectedZone === 'Todas' || a.zone === selectedZone);
 
-  // ==========================================
-  // PANTALLA DE BLOQUEO AMISTOSA (SALA CERRADA)
-  // ==========================================
   if (gameState.isGameLocked) {
     return (
       <div className="min-h-screen bg-[#010326] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans z-50">
@@ -351,7 +348,7 @@ export default function Home() {
             <div className="flex items-start gap-3 pt-3">
               <input type="checkbox" id="terms" required checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} className="mt-1 w-4 h-4 text-[#4B68BF] border-slate-300 rounded focus:ring-[#4B68BF]" />
               <label htmlFor="terms" className="text-xs text-slate-500 font-medium leading-tight">
-                He leído y acepto los <button type="button" onClick={() => setShowTerms(true)} className="text-[#4B68BF] font-bold hover:underline">Términos y Condiciones</button> del juego.
+                He leído, acepto los <button type="button" onClick={() => setShowTerms(true)} className="text-[#4B68BF] font-bold hover:underline">Términos y Condiciones</button> y declaro ser <strong>mayor de 18 años</strong>.
               </label>
             </div>
             <button type="submit" aria-label="Entrar" className="w-full bg-[#F22613] text-white font-black text-lg py-4 rounded-full mt-6 shadow-[0_8px_20px_rgba(242,38,19,0.3)] hover:-translate-y-0.5 hover:shadow-[0_10px_25px_rgba(242,38,19,0.4)] active:scale-95 transition-all tracking-wide uppercase">¡A Jugar!</button>
@@ -372,11 +369,12 @@ export default function Home() {
               <div className="p-6 overflow-y-auto text-sm text-slate-600 space-y-4">
                 <p>Al participar en el <strong>Bingo de la Familia</strong>, usted acepta las siguientes reglas:</p>
                 <div className="space-y-3">
-                  <p><strong>1. Validez de Cartones:</strong> Los cartones no participan del sorteo hasta que el administrador confirme el pago.</p>
-                  <p><strong>2. Entrega de Premios:</strong> Los premios se entregarán exclusivamente al titular del DNI registrado en este formulario.</p>
-                  <p><strong>3. Cortes de Conexión:</strong> Sus cartones seguirán participando del juego de manera automática en el servidor.</p>
-                  <p><strong>4. Modalidad de Juego:</strong> Las decisiones del sistema automatizado son finales y no apelables.</p>
-                  <p><strong>5. Empates:</strong> En caso de que dos o más jugadores completen el Bingo o la Línea, el premio se dividirá en partes iguales.</p>
+                  <p className="text-red-500 bg-red-50 p-2 rounded-md"><strong>1. Edad Mínima (+18):</strong> El juego es estrictamente para mayores de 18 años. Al ingresar sus datos, usted confirma y declara cumplir con este requisito legal.</p>
+                  <p><strong>2. Validez de Cartones:</strong> Los cartones no participan del sorteo hasta que el administrador confirme el pago.</p>
+                  <p><strong>3. Entrega de Premios:</strong> Los premios se entregarán exclusivamente al titular del DNI registrado en este formulario.</p>
+                  <p><strong>4. Cortes de Conexión:</strong> Sus cartones seguirán participando del juego de manera automática en el servidor en caso de perder conexión a internet.</p>
+                  <p><strong>5. Modalidad de Juego:</strong> Las decisiones del sistema automatizado son finales y no apelables.</p>
+                  <p><strong>6. Empates:</strong> En caso de que dos o más jugadores completen el Bingo o la Línea al mismo tiempo, el premio se dividirá en partes iguales.</p>
                 </div>
               </div>
               <div className="p-4 border-t border-slate-100 bg-slate-50 text-center">
@@ -414,6 +412,22 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-slate-100 font-sans selection:bg-blue-200 relative pb-24 overflow-x-hidden">
+      
+      {/* INYECCIÓN DE CSS PARA EL CARRUSEL INFINITO DE PUBLICIDADES */}
+      <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          animation: marquee 40s linear infinite;
+          display: flex;
+          width: max-content;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
 
       {safeAudioUrl && (
         <audio 
@@ -557,7 +571,7 @@ export default function Home() {
         )}
       </header>
 
-      {/* BLOQUE DE PUBLICIDADES PARA EL JUGADOR */}
+      {/* BLOQUE DE PUBLICIDADES CON CARRUSEL INFINITO AUTOMÁTICO */}
       {activeAds.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 pt-6">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -572,28 +586,34 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="flex overflow-x-auto p-4 gap-4 scrollbar-hide snap-x">
-              {displayedAds.map(ad => (
-                <div 
-                  key={ad.id} 
-                  onClick={() => setSelectedAd(ad)} 
-                  className="min-w-[280px] max-w-[280px] flex-shrink-0 snap-start border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
-                >
-                  <div className="h-32 bg-slate-100 overflow-hidden relative">
-                    <img src={ad.imageUrl} alt={ad.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/400x200?text=Visitanos')} />
-                    <div className="absolute bottom-2 left-2 bg-[#010326]/80 backdrop-blur-sm text-white text-[9px] font-black px-2 py-1 rounded uppercase flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-[#F29188]" /> {ad.zone}
+            {displayedAds.length === 0 ? (
+              <div className="w-full text-center py-6 text-slate-400 text-xs font-bold uppercase">No hay patrocinios en esta zona.</div>
+            ) : (
+              <div className="overflow-hidden relative w-full pt-4 pb-4">
+                <div className="animate-marquee gap-4 px-2">
+                  {/* Duplicamos la lista 4 veces para asegurar que el giro no tenga cortes */}
+                  {[...displayedAds, ...displayedAds, ...displayedAds, ...displayedAds].map((ad, idx) => (
+                    <div 
+                      key={`${ad.id}-${idx}`} 
+                      onClick={() => setSelectedAd(ad)} 
+                      className="min-w-[280px] max-w-[280px] flex-shrink-0 border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer bg-white"
+                    >
+                      <div className="h-32 bg-slate-100 overflow-hidden relative">
+                        <img src={ad.imageUrl} alt={ad.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/400x200?text=Visitanos')} />
+                        <div className="absolute bottom-2 left-2 bg-[#010326]/80 backdrop-blur-sm text-white text-[9px] font-black px-2 py-1 rounded uppercase flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-[#F29188]" /> {ad.zone}
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-black text-slate-800 text-sm uppercase truncate mb-2">{ad.name}</h3>
+                        {ad.address && <p className="text-xs text-slate-500 font-medium truncate flex items-center gap-1.5"><MapPin className="w-3 h-3" /> {ad.address}</p>}
+                        {ad.hours && <p className="text-xs text-slate-500 font-medium truncate mt-1 flex items-center gap-1.5"><Clock className="w-3 h-3" /> {ad.hours}</p>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-4 bg-white">
-                    <h3 className="font-black text-slate-800 text-sm uppercase truncate mb-2">{ad.name}</h3>
-                    {ad.address && <p className="text-xs text-slate-500 font-medium truncate flex items-center gap-1.5"><MapPin className="w-3 h-3" /> {ad.address}</p>}
-                    {ad.hours && <p className="text-xs text-slate-500 font-medium truncate mt-1 flex items-center gap-1.5"><Clock className="w-3 h-3" /> {ad.hours}</p>}
-                  </div>
+                  ))}
                 </div>
-              ))}
-              {displayedAds.length === 0 && <div className="w-full text-center py-6 text-slate-400 text-xs font-bold uppercase">No hay patrocinios en esta zona.</div>}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -670,7 +690,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* MODAL DE RECUPERAR CARTONES CON TEXTOS CLAROS */}
+      {/* MODAL DE RECUPERAR CARTONES */}
       {showRestoreModal && currentUser?.lastPlayedCards && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#010326]/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col border-4 border-[#4B68BF] animate-in zoom-in-95">
@@ -746,7 +766,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* RESTO DE LA PANTALLA DE BLOQUEO Y TABLERO (IGUAL QUE ANTES) */}
       {!hasPaid ? (
         <div className="max-w-md mx-auto px-4 py-12 flex flex-col items-center animate-in fade-in duration-500 mt-10">
           <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden w-full border-[4px] border-[#F22613]/20">

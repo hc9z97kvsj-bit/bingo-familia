@@ -1,9 +1,32 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
+const inter = Inter({ subsets: ["latin"] });
+
 export const metadata: Metadata = {
-  title: "Mitrax Bingo Online",
-  description: "Sistema interactivo de Bingo Multijugador en tiempo real",
+  title: "Bingo de la Familia",
+  description: "¡Vení a jugar al Bingo de la Familia! Sorteos en vivo, grandes premios y mucha diversión.",
+  icons: {
+    icon: '/logo.png', // Este es el favicon de la pestaña de la compu
+    apple: '/logo.png', // Este es el ícono si alguien lo guarda en la pantalla de su celular
+  },
+  openGraph: {
+    title: 'Bingo de la Familia',
+    description: '¡Vení a jugar al Bingo de la Familia! Sorteos en vivo, grandes premios y mucha diversión.',
+    url: 'https://bingo-familia.vercel.app', 
+    siteName: 'Bingo de la Familia',
+    images: [
+      {
+        url: '/logo.png', // Esta es la imagen que va a salir en la miniatura de WhatsApp
+        width: 800,
+        height: 800,
+        alt: 'Logo Bingo de la Familia',
+      },
+    ],
+    locale: 'es_AR',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
@@ -12,14 +35,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html 
-      lang="es" 
-      suppressHydrationWarning 
-    >
-      {/* Usamos 'font-sans' de Tailwind para que use la fuente predeterminada más linda de tu sistema */}
-      <body className="font-sans antialiased min-h-screen bg-slate-50">
-        {children}
-      </body>
+    <html lang="es">
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
