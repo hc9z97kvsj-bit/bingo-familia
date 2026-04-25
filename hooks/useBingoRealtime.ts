@@ -1,103 +1,164 @@
 import { useState, useEffect } from 'react';
-import { ref, onValue, update, set } from 'firebase/database';
 import { db } from '../lib/firebase';
-import { BingoCardData, GameState, User, Ad } from '../app/types/bingo';
+import { ref, onValue, update, push, remove } from 'firebase/database';
+import { Card, GameState, User } from '../app/types/bingo';
 
-export function useBingoRealtime(userId?: string) {
-  const [cards, setCards] = useState<BingoCardData[]>([]);
-  const [gameState, setGameState] = useState<GameState>({ 
-    status: 'waiting', drawnNumbers: [], winningMode: 'line-and-bingo',
-    winner: null, lineWinner: null, prizes: { pool: 0, line: 0, bingo: 0 }
+export function useBingoRealtime(currentUserId?: string) {
+  const [cards, setCards] = useState<Card[]>([]);
+  const [gameState, setGameState] = useState<GameState>({
+    status: 'waiting',
+    drawnNumbers: [],
+    winningMode: 'line-and-bingo',
+    winner: null,
+    lineWinner: null,
+    prizes: { pool: 0, line: 0, bingo: 0 },
+    isGameLocked: false // Acá está el famoso candado
   });
   const [users, setUsers] = useState<User[]>([]);
-  const [ads, setAds] = useState<Ad[]>([]); // NUEVO: Estado de Publicidad
-
-  const snapshotToArray = <T,>(snapshot: any): T[] => {
-    if (snapshot.exists()) {
-      return Object.values(snapshot.val()) as T[];
-    }
-    return [];
-  };
+  const [ads, setAds] = useState<any[]>([]);
 
   useEffect(() => {
-    const unsubsCards = onValue(ref(db, 'cards'), (snap) => setCards(snapshotToArray<BingoCardData>(snap)));
-    
-    const unsubsGame = onValue(ref(db, 'game/state'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.val();
+    // Escuchar el estado del juego
+    const stateRef = ref(db, 'game/state');
+    const unsubState = onValue(stateRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
         setGameState({
-          status: data.status || 'waiting', drawnNumbers: data.drawnNumbers || [],
-          winningMode: data.winningMode || 'line-and-bingo', winner: data.winner || null,
-          lineWinner: data.lineWinner || null, prizes: data.prizes || { pool: 0, line: 0, bingo: 0 },
-          youtubeUrl: data.youtubeUrl || '', youtubeTitle: data.youtubeTitle || ''
+          status: data.status || 'waiting',
+          drawnNumbers: data.drawnNumbers || [],
+          winningMode: data.winningMode || 'line-and-bingo',
+          winner: data.winner || null,
+          lineWinner: data.lineWinner || null,
+          prizes: data.prizes || { pool: 0, line: 0, bingo: 0 },
+          youtubeUrl: data.youtubeUrl || '',
+          youtubeTitle: data.youtubeTitle || '',
+          isGameLocked: data.isGameLocked || false // Leemos el candado de la base de datos
         });
       }
     });
-    
-    const unsubsUsers = onValue(ref(db, 'users'), (snap) => setUsers(snapshotToArray<User>(snap)));
-    
-    // NUEVO: Escuchar Publicidad en tiempo real
-    const unsubsAds = onValue(ref(db, 'ads'), (snap) => setAds(snapshotToArray<Ad>(snap)));
 
-    return () => { unsubsCards(); unsubsGame(); unsubsUsers(); unsubsAds(); };
+    // Escuchar los cartones
+    const cardsRef = ref(db, 'cards');
+    const unsubCards = onValue(cardsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const parsedCards = Object.values(data) as Card[];
+        setCards(parsedCards);
+      } else {
+        setCards([]);
+      }
+    });
+
+    // Escuchar a los jugadores
+    const usersRef = ref(db, 'users');
+    const unsubUsers = onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const parsedUsers = Object.values(data) as User[];
+        setUsers(parsedUsers);
+      } else {
+        setUsers([]);
+      }
+    });
+
+    // Escuchar las publicidades
+    const adsRef = ref(db, 'ads');
+    const unsubAds = onValue(adsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const parsedAds = Object.entries(data).map(([id, val]: [string, any]) => ({
+          id,
+          ...val
+        }));
+        setAds(parsedAds);
+      } else {
+        setAds([]);
+      }
+    });
+
+    return () => {
+      unsubState();
+      unsubCards();
+      unsubUsers();
+      unsubAds();
+    };
   }, []);
 
-  const selectCard = async (cardId: string, uid: string, uname: string) => {
-    if (!uid || !uname) return;
-    const myCards = cards.filter(c => c.ownerId === uid);
-    const targetCard = cards.find(c => c.id === cardId);
-    const currentUser = users.find(u => u.id === uid);
-    const limit = currentUser?.maxCards || 6;
-    if (!targetCard) return;
-    if (targetCard.ownerId === uid) {
+  const selectCard = async (cardId: string, userId: string, userName: string) => {
+    const currentUser = users.find(u => u.id === userId);
+    const maxCards = currentUser?.maxCards || 6;
+    const myCards = cards.filter(c => c.ownerId === userId);
+
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    if (card.ownerId === userId) {
       await update(ref(db, `cards/${cardId}`), { ownerId: "", ownerName: "" });
-      return;
-    }
-    if (targetCard.ownerId && targetCard.ownerId !== "") return alert("Este cartón ya lo agarró otra persona.");
-    if (myCards.length >= limit) return alert(`¡No podés elegir más! Tu límite asignado es de ${limit} cartones.`);
-    
-    await update(ref(db, `cards/${cardId}`), { ownerId: uid, ownerName: uname });
-  };
-
-  const toggleReady = async (uid: string, isReady: boolean) => {
-    if (!uid) return;
-    await update(ref(db, `users/${uid}`), { isReady });
-  };
-
-  const setPlayerLimit = async (uid: string, limit: number) => {
-    if (!uid) return;
-    await update(ref(db, `users/${uid}`), { maxCards: limit });
-  };
-
-  const toggleUserPayment = async (uid: string, hasPaid: boolean) => {
-    if (!uid) return;
-    await update(ref(db, `users/${uid}`), { hasPaidCards: hasPaid });
-  };
-
-  const resetPlayerCards = async (uid: string) => {
-    if (!uid) return;
-    const userCards = cards.filter(c => c.ownerId === uid);
-    for (const c of userCards) {
-      await update(ref(db, `cards/${c.id}`), { ownerId: "", ownerName: "" });
-    }
-    await update(ref(db, `users/${uid}`), { isReady: false, hasPaidCards: false });
-  };
-
-  // NUEVAS FUNCIONES DE PUBLICIDAD
-  const addAd = async (adData: Omit<Ad, 'id' | 'timestamp' | 'isActive'>) => {
-    const id = `ad_${Date.now()}`;
-    await set(ref(db, `ads/${id}`), { ...adData, id, isActive: true, timestamp: Date.now() });
-  };
-
-  const toggleAd = async (id: string, currentStatus: boolean) => {
-    await update(ref(db, `ads/${id}`), { isActive: !currentStatus });
-  };
-
-  const deleteAd = async (id: string) => {
-    if(confirm("¿Eliminar este patrocinador definitivamente?")) {
-      await set(ref(db, `ads/${id}`), null);
+    } else {
+      if (card.ownerId && card.ownerId !== "") {
+        alert("Este cartón ya fue elegido por otro jugador.");
+        return;
+      }
+      if (myCards.length >= maxCards) {
+        alert(`Límite alcanzado: solo podés jugar con ${maxCards} cartones simultáneos.`);
+        return;
+      }
+      await update(ref(db, `cards/${cardId}`), { ownerId: userId, ownerName: userName });
     }
   };
 
-  return { cards, gameState, users, ads, selectCard, toggleReady, setPlayerLimit, toggleUserPayment, resetPlayerCards, addAd, toggleAd, deleteAd };
+  const toggleReady = async (userId: string, isReady: boolean) => {
+    await update(ref(db, `users/${userId}`), { isReady });
+  };
+
+  const setPlayerLimit = async (userId: string, maxCards: number) => {
+    await update(ref(db, `users/${userId}`), { maxCards });
+  };
+
+  const resetPlayerCards = async (userId: string) => {
+    const userCards = cards.filter(c => c.ownerId === userId);
+    const updates: any = {};
+    userCards.forEach(c => {
+      updates[`cards/${c.id}/ownerId`] = "";
+      updates[`cards/${c.id}/ownerName`] = "";
+    });
+    updates[`users/${userId}/isReady`] = false;
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db), updates);
+    }
+  };
+
+  const toggleUserPayment = async (userId: string, hasPaidCards: boolean) => {
+    await update(ref(db, `users/${userId}`), { hasPaidCards });
+  };
+
+  const addAd = async (adData: any) => {
+    const newAdRef = push(ref(db, 'ads'));
+    await update(newAdRef, { ...adData, isActive: true });
+  };
+
+  const toggleAd = async (adId: string, currentStatus: boolean) => {
+    await update(ref(db, `ads/${adId}`), { isActive: !currentStatus });
+  };
+
+  const deleteAd = async (adId: string) => {
+    if(confirm("¿Eliminar este patrocinador?")) {
+      await remove(ref(db, `ads/${adId}`));
+    }
+  };
+
+  return {
+    cards,
+    gameState,
+    users,
+    ads,
+    selectCard,
+    toggleReady,
+    setPlayerLimit,
+    resetPlayerCards,
+    toggleUserPayment,
+    addAd,
+    toggleAd,
+    deleteAd
+  };
 }

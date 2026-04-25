@@ -286,9 +286,8 @@ export default function Home() {
   const uniqueZones = ['Todas', ...Array.from(new Set(activeAds.map(a => a.zone)))];
   const displayedAds = activeAds.filter(a => selectedZone === 'Todas' || a.zone === selectedZone);
 
-
   // ==========================================
-  // PANTALLA DE BLOQUEO AMISTOSA (NUEVO)
+  // PANTALLA DE BLOQUEO AMISTOSA (SALA CERRADA)
   // ==========================================
   if (gameState.isGameLocked) {
     return (
@@ -313,7 +312,7 @@ export default function Home() {
           <a 
             href="https://wa.me/5492254423709" 
             target="_blank" 
-            rel="noreferrer" 
+            rel="noopener noreferrer" 
             className="w-full bg-green-500 text-white px-6 py-4 rounded-2xl font-black hover:bg-green-600 hover:-translate-y-1 transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-[0_10px_20px_rgba(34,197,94,0.3)]"
           >
             <MessageCircle className="w-5 h-5" /> Consultar Horarios
@@ -322,7 +321,6 @@ export default function Home() {
       </div>
     );
   }
-
 
   if (!isLogged) {
     return (
@@ -338,7 +336,7 @@ export default function Home() {
         <div className="text-center mb-6 z-10 px-4 flex flex-col items-center relative mt-4">
           <div className="relative">
             <div className="absolute inset-0 bg-[#F29188] blur-3xl opacity-20 rounded-full animate-pulse"></div>
-            <img src="/logo.jpg" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
+            <img src="/logo.png" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
           </div>
         </div>
 
@@ -369,7 +367,7 @@ export default function Home() {
             <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-[#4B68BF]/30">
               <div className="bg-[#4B68BF] p-5 flex justify-between items-center text-white">
                 <div className="flex items-center gap-2"><ScrollText className="w-5 h-5" /><h3 className="font-black uppercase tracking-wider text-sm">Términos y Condiciones</h3></div>
-                <button onClick={() => setShowTerms(false)} className="hover:bg-white/20 p-1.5 rounded-full transition-colors" title="Cerrar"><X className="w-5 h-5"/></button>
+                <button onClick={() => setShowTerms(false)} className="hover:bg-white/20 p-1.5 rounded-full transition-colors" title="Cerrar" aria-label="Cerrar"><X className="w-5 h-5"/></button>
               </div>
               <div className="p-6 overflow-y-auto text-sm text-slate-600 space-y-4">
                 <p>Al participar en el <strong>Bingo de la Familia</strong>, usted acepta las siguientes reglas:</p>
@@ -606,7 +604,7 @@ export default function Home() {
           <div className="bg-white rounded-3xl overflow-hidden shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
             <div className="relative bg-slate-100 flex-shrink-0 flex items-center justify-center h-[40vh] md:h-[50vh] border-b border-slate-200">
               <img src={selectedAd.imageUrl} alt={selectedAd.name} className="max-w-full max-h-full object-contain" />
-              <button onClick={() => setSelectedAd(null)} className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors">
+              <button onClick={() => setSelectedAd(null)} className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors" aria-label="Cerrar">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -618,7 +616,7 @@ export default function Home() {
                 {selectedAd.hours && <div className="flex items-center justify-center gap-2"><Clock className="w-4 h-4 text-[#4B68BF]" /> {selectedAd.hours}</div>}
               </div>
               {selectedAd.phone ? (
-                <a href={`https://wa.me/${selectedAd.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="w-full bg-green-500 text-white px-6 py-4 rounded-2xl font-black hover:bg-green-600 hover:-translate-y-1 transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-[0_10px_20px_rgba(34,197,94,0.3)]">
+                <a href={`https://wa.me/${selectedAd.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="w-full bg-green-500 text-white px-6 py-4 rounded-2xl font-black hover:bg-green-600 hover:-translate-y-1 transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-[0_10px_20px_rgba(34,197,94,0.3)]">
                   <MessageCircle className="w-5 h-5" /> Contactar Ahora
                 </a>
               ) : (
@@ -637,7 +635,7 @@ export default function Home() {
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
             <div className="bg-[#4B68BF] p-5 flex justify-between items-center text-white">
               <div className="flex items-center gap-2"><Trophy className="w-5 h-5" /><h3 className="font-black uppercase tracking-wider text-sm">Mis Premios</h3></div>
-              <button onClick={() => setShowHistoryModal(false)} className="hover:bg-white/20 p-1.5 rounded-full transition-colors"><X className="w-5 h-5"/></button>
+              <button onClick={() => setShowHistoryModal(false)} className="hover:bg-white/20 p-1.5 rounded-full transition-colors" aria-label="Cerrar"><X className="w-5 h-5"/></button>
             </div>
             <div className="p-6 overflow-y-auto space-y-3 bg-slate-100">
               {myWins.length === 0 ? (
@@ -748,7 +746,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* RESTO DE LA PANTALLA DE BLOQUEO POR PAGO Y TABLERO (IGUAL QUE ANTES) */}
+      {/* RESTO DE LA PANTALLA DE BLOQUEO Y TABLERO (IGUAL QUE ANTES) */}
       {!hasPaid ? (
         <div className="max-w-md mx-auto px-4 py-12 flex flex-col items-center animate-in fade-in duration-500 mt-10">
           <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden w-full border-[4px] border-[#F22613]/20">

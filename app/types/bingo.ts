@@ -66,6 +66,7 @@ export interface GameState {
   winner: WinnerInfo[] | null;
   youtubeUrl?: string; 
   youtubeTitle?: string;
+  isGameLocked?: boolean;
   prizes: {
     pool: number;
     line: number;
