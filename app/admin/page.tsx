@@ -7,7 +7,6 @@ import { useBingoRealtime } from '../../hooks/useBingoRealtime';
 import { generateCards } from '../../lib/generator';
 import { WinningMode, WinnerInfo } from '../types/bingo';
 import Link from 'next/link';
-// AQUÍ ESTÁ EL ICONO RADIO AGREGADO
 import { 
   Trophy, Banknote, Play, Square, RotateCcw, 
   RefreshCw, Settings, Users, CheckCircle2, 

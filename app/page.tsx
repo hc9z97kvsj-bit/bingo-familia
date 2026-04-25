@@ -57,11 +57,18 @@ export default function Home() {
   const myWins = currentUser?.winHistory ? Object.values(currentUser.winHistory).sort((a, b) => b.timestamp - a.timestamp) : [];
 
   // ==========================================
-  // FUNCIÓN PARA LIMPIAR LINKS CON ESPACIOS
+  // FUNCIÓN REFORZADA PARA LIMPIAR LINKS
+  // (Evita que Archive.org y los espacios traben el audio)
   // ==========================================
   const getCleanAudioUrl = (url: string) => {
     if (!url) return '';
-    return url.trim().replace(/ /g, '%20');
+    try {
+      // Reemplazamos los espacios manualmente y usamos la URL nativa
+      const cleanSpaces = url.trim().replace(/ /g, '%20');
+      return new URL(cleanSpaces).href;
+    } catch {
+      return url;
+    }
   };
 
   const safeAudioUrl = getCleanAudioUrl(gameState.youtubeUrl || '');
@@ -300,7 +307,7 @@ export default function Home() {
         <div className="text-center mb-6 z-10 px-4 flex flex-col items-center relative mt-4">
           <div className="relative">
             <div className="absolute inset-0 bg-[#F29188] blur-3xl opacity-20 rounded-full animate-pulse"></div>
-            <img src="/logo.jpg" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
+            <img src="/logo.png" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
           </div>
         </div>
 
@@ -379,7 +386,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-100 font-sans selection:bg-blue-200 relative pb-24 overflow-x-hidden">
 
-      {/* EL NUEVO REPRODUCTOR NATIVO DE RADIO HTML5 CON LINK LIMPIO */}
       {safeAudioUrl && (
         <audio 
           ref={radioRef} 
@@ -387,8 +393,9 @@ export default function Home() {
           preload="none" 
           onPlay={() => setIsMusicPlaying(true)}
           onPause={() => setIsMusicPlaying(false)}
-          onError={(e) => {
-            console.error("Error en la Radio:", e);
+          onError={() => {
+            // CORRECCIÓN: Borré la "e" para evitar que explote la pantalla de Next.js
+            console.error("No se pudo reproducir el enlace de la radio.");
             setIsMusicPlaying(false);
           }}
         />
@@ -523,7 +530,6 @@ export default function Home() {
         )}
       </header>
 
-      {/* BLOQUE DE PUBLICIDADES PARA EL JUGADOR */}
       {activeAds.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 pt-6">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -564,7 +570,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* MODAL DE PUBLICIDAD A PANTALLA COMPLETA */}
       {selectedAd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#010326]/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedAd(null)}>
           <div className="bg-white rounded-3xl overflow-hidden shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
@@ -595,7 +600,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* MODAL DEL HISTORIAL DE PREMIOS DEL JUGADOR */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#010326]/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowHistoryModal(false)}>
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
@@ -636,7 +640,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* MODAL DE RECUPERAR CARTONES CON TEXTOS CLAROS */}
       {showRestoreModal && currentUser?.lastPlayedCards && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#010326]/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col border-4 border-[#4B68BF] animate-in zoom-in-95">
