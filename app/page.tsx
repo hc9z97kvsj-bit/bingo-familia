@@ -57,18 +57,14 @@ export default function Home() {
   const myWins = currentUser?.winHistory ? Object.values(currentUser.winHistory).sort((a, b) => b.timestamp - a.timestamp) : [];
 
   // ==========================================
-  // FUNCIÓN REFORZADA PARA LIMPIAR LINKS
-  // (Evita que Archive.org y los espacios traben el audio)
+  // FUNCIÓN PARA LIMPIAR LINKS SIN ROMPERSE
   // ==========================================
   const getCleanAudioUrl = (url: string) => {
     if (!url) return '';
-    try {
-      // Reemplazamos los espacios manualmente y usamos la URL nativa
-      const cleanSpaces = url.trim().replace(/ /g, '%20');
-      return new URL(cleanSpaces).href;
-    } catch {
-      return url;
-    }
+    // Si ya tiene porcentajes (ya está codificada), la mandamos directo
+    if (url.includes('%20') || url.includes('%C2')) return url;
+    // Si viene cruda, la codificamos para que el navegador no llore
+    return encodeURI(url);
   };
 
   const safeAudioUrl = getCleanAudioUrl(gameState.youtubeUrl || '');
@@ -113,7 +109,10 @@ export default function Home() {
         radioRef.current.pause();
       } else {
         radioRef.current.volume = gameState.status === 'playing' ? 0.15 : 0.6;
-        radioRef.current.play().catch(e => console.warn("La radio necesita interacción primero", e));
+        radioRef.current.play().catch(() => {
+          // Silencioso, sin errores rojos
+          setIsMusicPlaying(false);
+        });
       }
     }
   };
@@ -151,7 +150,7 @@ export default function Home() {
           const sound = new Audio('/draw.mp3');
           sound.volume = 0.5;
           const playPromise = sound.play();
-          if (playPromise !== undefined) playPromise.catch(e => console.warn("Audio bloqueado", e));
+          if (playPromise !== undefined) playPromise.catch(() => {});
         } catch (error) {}
 
         const lastNumber = gameState.drawnNumbers[gameState.drawnNumbers.length - 1];
@@ -307,7 +306,7 @@ export default function Home() {
         <div className="text-center mb-6 z-10 px-4 flex flex-col items-center relative mt-4">
           <div className="relative">
             <div className="absolute inset-0 bg-[#F29188] blur-3xl opacity-20 rounded-full animate-pulse"></div>
-            <img src="/logo.png" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
+            <img src="/logo.jpg" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
           </div>
         </div>
 
@@ -386,6 +385,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-100 font-sans selection:bg-blue-200 relative pb-24 overflow-x-hidden">
 
+      {/* EL NUEVO REPRODUCTOR NATIVO DE RADIO HTML5 CON LINK LIMPIO Y SEGURO */}
       {safeAudioUrl && (
         <audio 
           ref={radioRef} 
@@ -394,8 +394,6 @@ export default function Home() {
           onPlay={() => setIsMusicPlaying(true)}
           onPause={() => setIsMusicPlaying(false)}
           onError={() => {
-            // CORRECCIÓN: Borré la "e" para evitar que explote la pantalla de Next.js
-            console.error("No se pudo reproducir el enlace de la radio.");
             setIsMusicPlaying(false);
           }}
         />
@@ -530,6 +528,7 @@ export default function Home() {
         )}
       </header>
 
+      {/* BLOQUE DE PUBLICIDADES PARA EL JUGADOR */}
       {activeAds.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 pt-6">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -570,6 +569,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* MODAL DE PUBLICIDAD A PANTALLA COMPLETA */}
       {selectedAd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#010326]/90 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedAd(null)}>
           <div className="bg-white rounded-3xl overflow-hidden shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
@@ -600,6 +600,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* MODAL DEL HISTORIAL DE PREMIOS DEL JUGADOR */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#010326]/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowHistoryModal(false)}>
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
@@ -640,6 +641,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* MODAL DE RECUPERAR CARTONES CON TEXTOS CLAROS */}
       {showRestoreModal && currentUser?.lastPlayedCards && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#010326]/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col border-4 border-[#4B68BF] animate-in zoom-in-95">
@@ -715,6 +717,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* RESTO DE LA PANTALLA DE BLOQUEO Y TABLERO (IGUAL QUE ANTES) */}
       {!hasPaid ? (
         <div className="max-w-md mx-auto px-4 py-12 flex flex-col items-center animate-in fade-in duration-500 mt-10">
           <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden w-full border-[4px] border-[#F22613]/20">
