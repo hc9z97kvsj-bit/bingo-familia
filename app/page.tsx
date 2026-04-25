@@ -5,9 +5,7 @@ import { useBingoRealtime } from '../hooks/useBingoRealtime';
 import BingoCard from '../components/BingoCard';
 import { db } from '../lib/firebase';
 import { ref, update, get, onDisconnect } from 'firebase/database';
-// Importamos los nuevos iconos (Trash2, Hourglass, Banknote, Trophy, Calendar, Radio)
 import { Ticket, Dices, Coins, Star, Sparkles, Lock, RefreshCw, X, ScrollText, History, Volume2, VolumeX, Music, Play, Pause, MapPin, Clock, MessageCircle, CheckCircle2, Share2, Trash2, Hourglass, Banknote, Trophy, Calendar, Radio } from 'lucide-react';
-import ReactPlayer from 'react-player';
 
 export default function Home() {
   const [name, setName] = useState('');
@@ -18,8 +16,6 @@ export default function Home() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  
-  // NUEVO: Estado para el modal del Historial de Premios del usuario
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const [userId, setUserId] = useState('');
@@ -37,6 +33,7 @@ export default function Home() {
   
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const [selectedZone, setSelectedZone] = useState('Todas');
   const [selectedAd, setSelectedAd] = useState<any>(null);
@@ -46,7 +43,7 @@ export default function Home() {
 
   const { cards, gameState, users, ads, selectCard, toggleReady, resetPlayerCards } = useBingoRealtime(userId);
   
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const radioRef = useRef<HTMLAudioElement | null>(null);
   const historyScrollRef = useRef<HTMLDivElement | null>(null);
   const prevDrawnCount = useRef(0);
   const prevStatusRef = useRef(gameState.status);
@@ -57,8 +54,27 @@ export default function Home() {
   const hasPaid = currentUser?.hasPaidCards || false;
   const myCards = cards.filter(c => c.ownerId === userId);
   
-  // Extraemos el historial de premios del usuario ordenado del más reciente al más antiguo
   const myWins = currentUser?.winHistory ? Object.values(currentUser.winHistory).sort((a, b) => b.timestamp - a.timestamp) : [];
+
+  // ==========================================
+  // FUNCIÓN PARA LIMPIAR LINKS CON ESPACIOS
+  // ==========================================
+  const getCleanAudioUrl = (url: string) => {
+    if (!url) return '';
+    return url.trim().replace(/ /g, '%20');
+  };
+
+  const safeAudioUrl = getCleanAudioUrl(gameState.youtubeUrl || '');
+
+  useEffect(() => {
+    const handleInteraction = () => setHasInteracted(true);
+    window.addEventListener('click', handleInteraction, { once: true });
+    window.addEventListener('touchstart', handleInteraction, { once: true });
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     if (isLogged && currentUser && cards.length > 0 && hasPaid && !hasCheckedRestore.current) {
@@ -77,7 +93,6 @@ export default function Home() {
       setUserId(savedId);
       setUserName(savedName);
       setIsLogged(true);
-      setIsMusicPlaying(true);
       
       const userRef = ref(db, `users/${savedId}`);
       update(userRef, { isOnline: true, lastLoginAt: Date.now() });
@@ -85,16 +100,33 @@ export default function Home() {
     }
   }, []);
 
+  const toggleRadio = () => {
+    if (radioRef.current) {
+      if (isMusicPlaying) {
+        radioRef.current.pause();
+      } else {
+        radioRef.current.volume = gameState.status === 'playing' ? 0.15 : 0.6;
+        radioRef.current.play().catch(e => console.warn("La radio necesita interacción primero", e));
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (radioRef.current && isMusicPlaying) {
+        radioRef.current.volume = gameState.status === 'playing' ? 0.15 : 0.6;
+    }
+  }, [gameState.status, isMusicPlaying]);
+
   useEffect(() => {
     if (prevStatusRef.current === 'waiting' && gameState.status === 'playing') {
-      if (isVoiceEnabled && window.speechSynthesis) {
+      if (isVoiceEnabled && window.speechSynthesis && hasInteracted) {
         const speech = new SpeechSynthesisUtterance("El bingo inicia en tres, dos, uno.");
         speech.lang = 'es-AR';
         window.speechSynthesis.speak(speech);
       }
     }
     prevStatusRef.current = gameState.status;
-  }, [gameState.status, isVoiceEnabled]);
+  }, [gameState.status, isVoiceEnabled, hasInteracted]);
 
   useEffect(() => {
     if (gameState.status === 'waiting') {
@@ -107,23 +139,26 @@ export default function Home() {
 
   useEffect(() => {
     if (gameState.drawnNumbers.length > prevDrawnCount.current && gameState.drawnNumbers.length > 0) {
-      try {
-        const sound = new Audio('/draw.mp3');
-        const playPromise = sound.play();
-        if (playPromise !== undefined) playPromise.catch(e => console.warn("Audio bloqueado", e));
-      } catch (error) {}
+      if (hasInteracted) {
+        try {
+          const sound = new Audio('/draw.mp3');
+          sound.volume = 0.5;
+          const playPromise = sound.play();
+          if (playPromise !== undefined) playPromise.catch(e => console.warn("Audio bloqueado", e));
+        } catch (error) {}
 
-      const lastNumber = gameState.drawnNumbers[gameState.drawnNumbers.length - 1];
-      if (isVoiceEnabled && window.speechSynthesis) {
-        const speech = new SpeechSynthesisUtterance(lastNumber.toString());
-        speech.lang = 'es-AR';
-        window.speechSynthesis.speak(speech);
+        const lastNumber = gameState.drawnNumbers[gameState.drawnNumbers.length - 1];
+        if (isVoiceEnabled && window.speechSynthesis) {
+          const speech = new SpeechSynthesisUtterance(lastNumber.toString());
+          speech.lang = 'es-AR';
+          window.speechSynthesis.speak(speech);
+        }
       }
 
       if (historyScrollRef.current) historyScrollRef.current.scrollLeft = historyScrollRef.current.scrollWidth;
     }
     prevDrawnCount.current = gameState.drawnNumbers.length;
-  }, [gameState.drawnNumbers, isVoiceEnabled]);
+  }, [gameState.drawnNumbers, isVoiceEnabled, hasInteracted]);
 
   useEffect(() => {
     if (gameState.lineWinner && gameState.lineWinner.length > 0 && !announcedLineRef.current) {
@@ -152,8 +187,8 @@ export default function Home() {
     setUserName(fullName);
     setIsLogged(true);
     hasCheckedRestore.current = false; 
-    setIsMusicPlaying(true); 
-
+    setHasInteracted(true);
+    
     const userRef = ref(db, `users/${newId}`);
     const snap = await get(userRef);
     const currentCount = snap.exists() ? (snap.val().loginCount || 0) : 0;
@@ -187,9 +222,7 @@ export default function Home() {
         await navigator.clipboard.writeText(window.location.origin);
         alert('¡Enlace copiado al portapapeles! Ya podés pegarlo en WhatsApp o en tus redes.');
       }
-    } catch (err) {
-      console.log('Error al compartir:', err);
-    }
+    } catch (err) {}
   };
 
   const handleSelect = async (cardId: string) => {
@@ -267,7 +300,7 @@ export default function Home() {
         <div className="text-center mb-6 z-10 px-4 flex flex-col items-center relative mt-4">
           <div className="relative">
             <div className="absolute inset-0 bg-[#F29188] blur-3xl opacity-20 rounded-full animate-pulse"></div>
-            <img src="/logo.png" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
+            <img src="/logo.jpg" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
           </div>
         </div>
 
@@ -344,13 +377,21 @@ export default function Home() {
   const arePrizesSet = gameState.prizes && (gameState.prizes.line > 0 || gameState.prizes.bingo > 0);
 
   return (
-    <main className="min-h-screen bg-slate-100 font-sans selection:bg-blue-200 relative pb-24">
+    <main className="min-h-screen bg-slate-100 font-sans selection:bg-blue-200 relative pb-24 overflow-x-hidden">
 
-      {gameState.youtubeUrl && (
-        <div className="fixed -left-[10000px] top-0 pointer-events-none">
-          {/* @ts-ignore */}
-          <ReactPlayer url={gameState.youtubeUrl} playing={isMusicPlaying} volume={gameState.status === 'playing' ? 0.08 : 0.4} width="100px" height="100px" />
-        </div>
+      {/* EL NUEVO REPRODUCTOR NATIVO DE RADIO HTML5 CON LINK LIMPIO */}
+      {safeAudioUrl && (
+        <audio 
+          ref={radioRef} 
+          src={safeAudioUrl} 
+          preload="none" 
+          onPlay={() => setIsMusicPlaying(true)}
+          onPause={() => setIsMusicPlaying(false)}
+          onError={(e) => {
+            console.error("Error en la Radio:", e);
+            setIsMusicPlaying(false);
+          }}
+        />
       )}
       
       <header className="bg-white px-4 md:px-8 py-4 shadow-sm border-b sticky top-0 z-30 flex flex-col gap-4">
@@ -366,25 +407,27 @@ export default function Home() {
               <Share2 className="w-4 h-4" />
             </button>
 
-            {/* NUEVO BOTÓN: Historial de premios del jugador */}
             <button aria-label="Mis Premios" onClick={() => setShowHistoryModal(true)} className="p-2.5 rounded-xl border transition-colors bg-amber-50 text-amber-500 border-amber-200 hover:bg-amber-100" title="Mis Premios">
               <Trophy className="w-4 h-4" />
             </button>
 
-            {gameState.youtubeUrl && (
+            {safeAudioUrl && (
               <div className="hidden md:flex items-center bg-[#4B68BF]/10 border border-[#4B68BF]/20 rounded-xl px-3 py-1.5 gap-2 max-w-[200px]">
-                <button aria-label="Reproducir" onClick={() => setIsMusicPlaying(!isMusicPlaying)} className="text-[#4B68BF] hover:text-[#F29188] transition-colors flex-shrink-0 bg-white p-1 rounded-full shadow-sm" title={isMusicPlaying ? "Pausar música" : "Reproducir música"}>
+                <button aria-label="Reproducir" onClick={toggleRadio} className="text-[#4B68BF] hover:text-[#F29188] transition-colors flex-shrink-0 bg-white p-1 rounded-full shadow-sm" title={isMusicPlaying ? "Pausar música" : "Reproducir música"}>
                   {isMusicPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-[1px]" />}
                 </button>
                 <div className="flex flex-col overflow-hidden w-full">
-                  <span className="flex items-center gap-1 text-[8px] font-black text-[#4B68BF] uppercase tracking-widest"><Radio className="w-2 h-2" /> Radio Bingo</span>
+                  <span className="flex items-center gap-1 text-[8px] font-black text-[#4B68BF] uppercase tracking-widest">
+                    <Radio className={`w-2 h-2 ${isMusicPlaying ? 'animate-pulse text-[#F29188]' : ''}`} /> 
+                    Radio Bingo
+                  </span>
                   <span className="text-[10px] font-bold text-slate-700 truncate">{gameState.youtubeTitle || 'Música en vivo'}</span>
                 </div>
               </div>
             )}
 
-            {gameState.youtubeUrl && (
-              <button aria-label="Música" onClick={() => setIsMusicPlaying(!isMusicPlaying)} className={`md:hidden p-2.5 rounded-xl border transition-colors ${isMusicPlaying ? 'bg-[#4B68BF]/10 text-[#4B68BF] border-[#4B68BF]/30' : 'bg-slate-100 text-slate-400 border-slate-200'}`} title={isMusicPlaying ? "Pausar música" : "Reproducir música"}>
+            {safeAudioUrl && (
+              <button aria-label="Música" onClick={toggleRadio} className={`md:hidden p-2.5 rounded-xl border transition-colors ${isMusicPlaying ? 'bg-[#4B68BF]/10 text-[#4B68BF] border-[#4B68BF]/30' : 'bg-slate-100 text-slate-400 border-slate-200'}`} title={isMusicPlaying ? "Pausar música" : "Reproducir música"}>
                 {isMusicPlaying ? <Music className="w-4 h-4 animate-pulse" /> : <Music className="w-4 h-4 opacity-50" />}
               </button>
             )}

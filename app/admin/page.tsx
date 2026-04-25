@@ -7,6 +7,7 @@ import { useBingoRealtime } from '../../hooks/useBingoRealtime';
 import { generateCards } from '../../lib/generator';
 import { WinningMode, WinnerInfo } from '../types/bingo';
 import Link from 'next/link';
+// AQUÍ ESTÁ EL ICONO RADIO AGREGADO
 import { 
   Trophy, Banknote, Play, Square, RotateCcw, 
   RefreshCw, Settings, Users, CheckCircle2, 
@@ -33,7 +34,6 @@ export default function AdminPanel() {
   const [youtubeTitle, setYoutubeTitle] = useState('');
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
 
-  // NUEVO: Estado para editar publicidad
   const [newAd, setNewAd] = useState({ name: '', zone: '', address: '', hours: '', imageUrl: '', phone: '' });
   const [editingAdId, setEditingAdId] = useState<string | null>(null);
 
@@ -167,7 +167,6 @@ export default function AdminPanel() {
     return `${Math.floor(diff / 60).toString().padStart(2, '0')}:${(diff % 60).toString().padStart(2, '0')}`;
   };
 
-  // LÓGICA DE PUBLICIDAD: Crear o Editar
   const handleSaveAd = async (e: React.FormEvent) => {
     e.preventDefault();
     if(!newAd.name || !newAd.imageUrl || !newAd.zone) return alert("Nombre, Zona y URL de Imagen son obligatorios.");
@@ -289,12 +288,12 @@ export default function AdminPanel() {
               </div>
 
               <div className="bg-white/5 p-5 rounded-2xl border border-[#4B68BF]/40 focus-within:border-[#F29188] transition-all shadow-inner">
-                <label className="block text-[11px] font-bold text-[#F2F2F2]/70 mb-2 uppercase tracking-widest">Lobby Youtube Link</label>
+                <label className="block text-[11px] font-bold text-[#F2F2F2]/70 mb-2 uppercase tracking-widest">Link de la Radio MP3 (Archive.org, etc.)</label>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setIsPreviewPlaying(!isPreviewPlaying)} aria-label="Probar Música" title="Probar Música" className={`p-2 rounded-lg transition-colors shadow-md ${isPreviewPlaying ? 'bg-[#F29188] text-[#010326]' : 'bg-[#4B68BF] text-white hover:bg-[#4B68BF]/80'}`}>
                     {isPreviewPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-[2px]" />}
                   </button>
-                  <input type="url" placeholder="https://youtu.be/..." value={youtubeLink} onChange={e => { setYoutubeLink(e.target.value); setIsPreviewPlaying(false); }} className="bg-transparent text-sm font-medium text-[#F2F2F2] outline-none w-full" />
+                  <input type="url" placeholder="https://..." value={youtubeLink} onChange={e => { setYoutubeLink(e.target.value); setIsPreviewPlaying(false); }} className="bg-transparent text-sm font-medium text-[#F2F2F2] outline-none w-full" />
                 </div>
               </div>
             </div>
