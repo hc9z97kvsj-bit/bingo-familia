@@ -12,7 +12,8 @@ import {
   RefreshCw, Settings, Users, CheckCircle2, 
   Trash2, MonitorPlay, Ticket, Activity, Award,
   Dices, Phone, MessageCircle, Clock, ListChecks, Filter,
-  History, Music, Pause, Radio, Megaphone, MapPin, Image as ImageIcon, Store, Pencil
+  History, Music, Pause, Radio, Megaphone, MapPin, Image as ImageIcon, Store, Pencil,
+  Lock, Unlock
 } from 'lucide-react';
 import ReactPlayer from 'react-player';
 
@@ -75,6 +76,13 @@ export default function AdminPanel() {
 
   const togglePayment = async (userId: string, winId: string, currentPaid: boolean) => {
     await update(ref(db, `users/${userId}/winHistory/${winId}`), { paid: !currentPaid });
+  };
+
+  const toggleGameLock = async () => {
+    const isLocked = gameState.isGameLocked || false;
+    if (confirm(isLocked ? "¿Abrir la sala? Los jugadores ya podrán ingresar." : "¿Cerrar la sala? Nadie podrá entrar a ver sus cartones.")) {
+      await update(ref(db, 'game/state'), { isGameLocked: !isLocked });
+    }
   };
 
   const executeDraw = async (num: number) => {
@@ -152,9 +160,9 @@ export default function AdminPanel() {
         const cardsData: Record<string, any> = {};
         newCards.forEach(card => { cardsData[card.id] = card; });
         await set(ref(db, 'cards'), cardsData);
-        await set(ref(db, 'game/state'), { status: 'waiting', drawnNumbers: [], winningMode: 'line-and-bingo', winner: null, lineWinner: null, prizes: { pool: 0, line: 0, bingo: 0 } });
+        await set(ref(db, 'game/state'), { status: 'waiting', drawnNumbers: [], winningMode: 'line-and-bingo', winner: null, lineWinner: null, prizes: { pool: 0, line: 0, bingo: 0 }, isGameLocked: true });
         await set(ref(db, 'users'), null);
-        alert('Base de datos inicializada con éxito.');
+        alert('Base de datos inicializada con éxito. La sala está CERRADA por defecto.');
       } catch (error) { alert('Hubo un error en la conexión.'); }
       setIsInitializing(false);
   };
@@ -230,6 +238,11 @@ export default function AdminPanel() {
                 <span className={`text-xs font-black px-3 py-1 rounded-lg border ${gameState.status === 'waiting' ? 'bg-[#F2F2F2] text-[#010326] border-[#F2F2F2]' : gameState.status === 'playing' ? 'bg-[#4B68BF] text-[#F2F2F2] border-[#4B68BF]' : 'bg-[#F22613] text-[#F2F2F2] border-[#F22613]'}`}>
                   {gameState.status === 'waiting' ? 'EN ESPERA' : gameState.status === 'playing' ? 'EN CURSO' : 'FINALIZADO'}
                 </span>
+                
+                {/* ETIQUETA CANDADO EN EL HEADER */}
+                <span className={`text-xs font-black px-3 py-1 rounded-lg ml-2 flex items-center gap-1 ${gameState.isGameLocked ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'}`}>
+                   {gameState.isGameLocked ? <><Lock className="w-3 h-3" /> SALA CERRADA</> : <><Unlock className="w-3 h-3" /> SALA ABIERTA</>}
+                </span>
               </div>
             </div>
           </div>
@@ -247,6 +260,12 @@ export default function AdminPanel() {
             <div className="flex flex-wrap justify-center gap-3">
                 <Link href="/admin/historial" className="flex items-center gap-2 bg-[#4B68BF]/20 text-[#4B68BF] border border-[#4B68BF]/50 px-6 py-3 rounded-xl font-black hover:bg-[#4B68BF]/30 transition-all text-sm shadow-md"><History className="w-4 h-4" /> Auditoría</Link>
                 <button onClick={initDatabase} disabled={isInitializing} className="flex items-center gap-2 bg-[#F2F2F2] text-[#010326] border border-[#F2F2F2] px-6 py-3 rounded-xl font-black hover:bg-gray-300 transition-all text-sm shadow-md"><RotateCcw className="w-4 h-4" /> Reset DB</button>
+                
+                {/* BOTÓN MAGICO DE ABRIR/CERRAR SALA */}
+                <button onClick={toggleGameLock} className={`flex items-center gap-2 border px-6 py-3 rounded-xl font-black transition-all text-sm shadow-md ${gameState.isGameLocked ? 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600' : 'bg-slate-700 text-white border-slate-600 hover:bg-slate-800'}`}>
+                   {gameState.isGameLocked ? <><Unlock className="w-4 h-4" /> ABRIR SALA</> : <><Lock className="w-4 h-4" /> CERRAR SALA</>}
+                </button>
+
                 {gameState.status === 'waiting' ? (
                   <button onClick={startGame} className="flex items-center gap-2 bg-[#4B68BF] border border-[#4B68BF] px-8 py-3 rounded-xl font-black text-white hover:bg-[#4B68BF]/80 transition-all text-sm shadow-[0_0_20px_rgba(75,104,191,0.5)]"><Play className="w-5 h-5" /> INICIAR PARTIDA</button>
                 ) : (

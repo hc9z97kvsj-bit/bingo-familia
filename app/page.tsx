@@ -56,14 +56,9 @@ export default function Home() {
   
   const myWins = currentUser?.winHistory ? Object.values(currentUser.winHistory).sort((a, b) => b.timestamp - a.timestamp) : [];
 
-  // ==========================================
-  // FUNCIÓN PARA LIMPIAR LINKS SIN ROMPERSE
-  // ==========================================
   const getCleanAudioUrl = (url: string) => {
     if (!url) return '';
-    // Si ya tiene porcentajes (ya está codificada), la mandamos directo
     if (url.includes('%20') || url.includes('%C2')) return url;
-    // Si viene cruda, la codificamos para que el navegador no llore
     return encodeURI(url);
   };
 
@@ -110,7 +105,6 @@ export default function Home() {
       } else {
         radioRef.current.volume = gameState.status === 'playing' ? 0.15 : 0.6;
         radioRef.current.play().catch(() => {
-          // Silencioso, sin errores rojos
           setIsMusicPlaying(false);
         });
       }
@@ -292,6 +286,44 @@ export default function Home() {
   const uniqueZones = ['Todas', ...Array.from(new Set(activeAds.map(a => a.zone)))];
   const displayedAds = activeAds.filter(a => selectedZone === 'Todas' || a.zone === selectedZone);
 
+
+  // ==========================================
+  // PANTALLA DE BLOQUEO AMISTOSA (NUEVO)
+  // ==========================================
+  if (gameState.isGameLocked) {
+    return (
+      <div className="min-h-screen bg-[#010326] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans z-50">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
+           <Ticket className="absolute top-[10%] left-[10%] w-16 h-16 text-[#4B68BF] animate-[bounce_4s_infinite]" />
+           <Dices className="absolute bottom-[15%] left-[20%] w-20 h-20 text-[#F29188] animate-[bounce_6s_infinite_reverse]" />
+        </div>
+
+        <div className="bg-white p-8 md:p-10 rounded-[2.5rem] max-w-md w-full text-center shadow-[0_0_50px_rgba(75,104,191,0.3)] animate-in zoom-in slide-in-from-bottom-10 border-[6px] border-[#4B68BF]/30 relative z-10">
+          <div className="flex justify-center mb-6">
+            <div className="bg-[#4B68BF]/10 p-5 rounded-full">
+              <Clock className="w-16 h-16 text-[#4B68BF] animate-pulse" />
+            </div>
+          </div>
+          <h2 className="text-3xl font-black text-[#010326] mb-3 uppercase tracking-tight">¡Sala Cerrada!</h2>
+          <div className="w-16 h-1.5 bg-[#F29188] mx-auto rounded-full mb-6"></div>
+          <p className="text-slate-600 font-medium text-sm mb-8 leading-relaxed">
+            El bingo se encuentra fuera de horario y no se puede jugar en este momento. <br/><br/>
+            Cualquier consulta, por favor comunicate con el vendedor.
+          </p>
+          <a 
+            href="https://wa.me/5492254423709" 
+            target="_blank" 
+            rel="noreferrer" 
+            className="w-full bg-green-500 text-white px-6 py-4 rounded-2xl font-black hover:bg-green-600 hover:-translate-y-1 transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-[0_10px_20px_rgba(34,197,94,0.3)]"
+          >
+            <MessageCircle className="w-5 h-5" /> Consultar Horarios
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+
   if (!isLogged) {
     return (
       <div className="min-h-screen bg-[#010326] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans z-50">
@@ -385,7 +417,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-100 font-sans selection:bg-blue-200 relative pb-24 overflow-x-hidden">
 
-      {/* EL NUEVO REPRODUCTOR NATIVO DE RADIO HTML5 CON LINK LIMPIO Y SEGURO */}
       {safeAudioUrl && (
         <audio 
           ref={radioRef} 
@@ -717,7 +748,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* RESTO DE LA PANTALLA DE BLOQUEO Y TABLERO (IGUAL QUE ANTES) */}
+      {/* RESTO DE LA PANTALLA DE BLOQUEO POR PAGO Y TABLERO (IGUAL QUE ANTES) */}
       {!hasPaid ? (
         <div className="max-w-md mx-auto px-4 py-12 flex flex-col items-center animate-in fade-in duration-500 mt-10">
           <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden w-full border-[4px] border-[#F22613]/20">
