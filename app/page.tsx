@@ -5,7 +5,7 @@ import { useBingoRealtime } from '../hooks/useBingoRealtime';
 import BingoCard from '../components/BingoCard';
 import { db } from '../lib/firebase';
 import { ref, update, get, onDisconnect } from 'firebase/database';
-import { Ticket, Dices, Coins, Star, Sparkles, Lock, RefreshCw, X, ScrollText, History, Volume2, VolumeX, Music, Play, Pause, MapPin, Clock, MessageCircle, CheckCircle2, Share2, Trash2, Hourglass, Banknote, Trophy, Calendar, Radio } from 'lucide-react';
+import { Ticket, Dices, Coins, Star, Sparkles, Lock, RefreshCw, X, ScrollText, History, Volume2, VolumeX, Music, Play, Pause, MapPin, Clock, MessageCircle, CheckCircle2, Share2, Trash2, Hourglass, Banknote, Trophy, Calendar, Radio, Info, LogOut } from 'lucide-react';
 
 export default function Home() {
   const [name, setName] = useState('');
@@ -17,6 +17,19 @@ export default function Home() {
   const [showTerms, setShowTerms] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  const [customConfirm, setCustomConfirm] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    iconType: 'trash' | 'logout';
+    onConfirm: () => void;
+  }>({
+    isOpen: false, title: '', message: '', confirmText: 'Aceptar', cancelText: 'Cancelar', iconType: 'trash', onConfirm: () => {}
+  });
 
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
@@ -35,11 +48,12 @@ export default function Home() {
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
+  const announcedLineRef = useRef(false);
+  const announcedBingoRef = useRef(false); // <--- NUEVA REFERENCIA PARA NO REPETIR EL GRITO DE BINGO
+  const hasCheckedRestore = useRef(false); 
+
   const [selectedZone, setSelectedZone] = useState('Todas');
   const [selectedAd, setSelectedAd] = useState<any>(null);
-
-  const announcedLineRef = useRef(false);
-  const hasCheckedRestore = useRef(false); 
 
   const { cards, gameState, users, ads, selectCard, toggleReady, resetPlayerCards } = useBingoRealtime(userId);
   
@@ -65,12 +79,27 @@ export default function Home() {
   const safeAudioUrl = getCleanAudioUrl(gameState.youtubeUrl || '');
 
   useEffect(() => {
-    const handleInteraction = () => setHasInteracted(true);
-    window.addEventListener('click', handleInteraction, { once: true });
-    window.addEventListener('touchstart', handleInteraction, { once: true });
+    const unlockiOSPermissions = () => {
+      setHasInteracted(true);
+      try {
+        const silentAudio = new Audio('/draw.mp3');
+        silentAudio.volume = 0;
+        silentAudio.play().catch(() => {});
+      } catch (e) {}
+
+      if ('speechSynthesis' in window) {
+        const silentSpeech = new SpeechSynthesisUtterance('');
+        silentSpeech.volume = 0;
+        window.speechSynthesis.speak(silentSpeech);
+      }
+    };
+
+    window.addEventListener('click', unlockiOSPermissions, { once: true });
+    window.addEventListener('touchstart', unlockiOSPermissions, { once: true });
+    
     return () => {
-      window.removeEventListener('click', handleInteraction);
-      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('click', unlockiOSPermissions);
+      window.removeEventListener('touchstart', unlockiOSPermissions);
     };
   }, []);
 
@@ -120,6 +149,7 @@ export default function Home() {
   useEffect(() => {
     if (prevStatusRef.current === 'waiting' && gameState.status === 'playing') {
       if (isVoiceEnabled && window.speechSynthesis && hasInteracted) {
+        window.speechSynthesis.cancel(); 
         const speech = new SpeechSynthesisUtterance("El bingo inicia en tres, dos, uno.");
         speech.lang = 'es-AR';
         window.speechSynthesis.speak(speech);
@@ -134,6 +164,7 @@ export default function Home() {
       setMarkMode('auto');
       setLineAlertDismissed(false);
       announcedLineRef.current = false; 
+      announcedBingoRef.current = false; // Resetear grito de bingo
     }
   }, [gameState.status]);
 
@@ -149,6 +180,7 @@ export default function Home() {
 
         const lastNumber = gameState.drawnNumbers[gameState.drawnNumbers.length - 1];
         if (isVoiceEnabled && window.speechSynthesis) {
+          window.speechSynthesis.cancel(); 
           const speech = new SpeechSynthesisUtterance(lastNumber.toString());
           speech.lang = 'es-AR';
           window.speechSynthesis.speak(speech);
@@ -160,11 +192,59 @@ export default function Home() {
     prevDrawnCount.current = gameState.drawnNumbers.length;
   }, [gameState.drawnNumbers, isVoiceEnabled, hasInteracted]);
 
+  // ==========================================
+  // EFECTO PARA GRITAR "LÍNEA" Y SONIDO
+  // ==========================================
   useEffect(() => {
     if (gameState.lineWinner && gameState.lineWinner.length > 0 && !announcedLineRef.current) {
-      announcedLineRef.current = true; setLineAlertDismissed(false); setLineCountdown(5);
+      announcedLineRef.current = true; 
+      setLineAlertDismissed(false); 
+      setLineCountdown(5);
+
+      if (hasInteracted) {
+        try {
+          // Sonido de campana de alerta directo de Google
+          const lineSound = new Audio('https://actions.google.com/sounds/v1/alarms/ding_dong.ogg');
+          lineSound.volume = 0.7;
+          lineSound.play().catch(() => {});
+        } catch (e) {}
+
+        if (isVoiceEnabled && window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          const names = gameState.lineWinner.map(w => w.name).join(' y ');
+          const speech = new SpeechSynthesisUtterance(`¡Línea! de ${names}`);
+          speech.lang = 'es-AR';
+          window.speechSynthesis.speak(speech);
+        }
+      }
     }
-  }, [gameState.lineWinner]);
+  }, [gameState.lineWinner, isVoiceEnabled, hasInteracted]);
+
+  // ==========================================
+  // EFECTO PARA GRITAR "BINGO" Y SONIDO
+  // ==========================================
+  useEffect(() => {
+    if (gameState.winner && gameState.winner.length > 0 && !announcedBingoRef.current) {
+      announcedBingoRef.current = true;
+
+      if (hasInteracted) {
+        try {
+          // Sonido de Casino Jackpot de Google
+          const bingoSound = new Audio('https://actions.google.com/sounds/v1/foley/casino_jackpot.ogg');
+          bingoSound.volume = 1.0;
+          bingoSound.play().catch(() => {});
+        } catch (e) {}
+
+        if (isVoiceEnabled && window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          const names = gameState.winner.map(w => w.name).join(' y ');
+          const speech = new SpeechSynthesisUtterance(`¡Bingo! Tenemos ganador. Felicitaciones a ${names}`);
+          speech.lang = 'es-AR';
+          window.speechSynthesis.speak(speech);
+        }
+      }
+    }
+  }, [gameState.winner, isVoiceEnabled, hasInteracted]);
 
   useEffect(() => {
     if (lineCountdown > 0 && !lineAlertDismissed && gameState.lineWinner && gameState.lineWinner.length > 0) {
@@ -188,6 +268,12 @@ export default function Home() {
     setIsLogged(true);
     hasCheckedRestore.current = false; 
     setHasInteracted(true);
+
+    if ('speechSynthesis' in window) {
+      const silentSpeech = new SpeechSynthesisUtterance('');
+      silentSpeech.volume = 0;
+      window.speechSynthesis.speak(silentSpeech);
+    }
     
     const userRef = ref(db, `users/${newId}`);
     const snap = await get(userRef);
@@ -201,12 +287,21 @@ export default function Home() {
   };
 
   const handleLogout = () => {
-    if (confirm('¿Cerrar sesión? Podrás volver a entrar con tu DNI.')) {
-      if (userId) update(ref(db, `users/${userId}`), { isOnline: false });
-      localStorage.removeItem('bingoUserId'); localStorage.removeItem('bingoUserName');
-      setIsLogged(false); setUserId(''); setUserName(''); setName(''); setLastName(''); setDni(''); setPhone('');
-      setAcceptedTerms(false); hasCheckedRestore.current = false; setIsMusicPlaying(false);
-    }
+    setCustomConfirm({
+      isOpen: true,
+      title: 'Cerrar Sesión',
+      message: '¿Estás seguro de que querés salir? Podrás volver a entrar con tu DNI.',
+      confirmText: 'Sí, salir',
+      cancelText: 'Cancelar',
+      iconType: 'logout',
+      onConfirm: () => {
+        if (userId) update(ref(db, `users/${userId}`), { isOnline: false });
+        localStorage.removeItem('bingoUserId'); localStorage.removeItem('bingoUserName');
+        setIsLogged(false); setUserId(''); setUserName(''); setName(''); setLastName(''); setDni(''); setPhone('');
+        setAcceptedTerms(false); hasCheckedRestore.current = false; setIsMusicPlaying(false);
+        setCustomConfirm(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleShare = async () => {
@@ -230,8 +325,19 @@ export default function Home() {
     await selectCard(cardId, userId, userName);
   };
 
-  const handleDropAll = async () => {
-    if (confirm("¿Estás seguro de soltar todos tus cartones y elegir otros nuevos?")) await resetPlayerCards(userId);
+  const handleDropAll = () => {
+    setCustomConfirm({
+      isOpen: true,
+      title: 'Soltar Cartones',
+      message: '¿Estás seguro de soltar todos tus cartones actuales para elegir otros nuevos?',
+      confirmText: 'Sí, soltarlos',
+      cancelText: 'Cancelar',
+      iconType: 'trash',
+      onConfirm: async () => {
+        await resetPlayerCards(userId);
+        setCustomConfirm(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleToggleReady = async () => {
@@ -319,6 +425,9 @@ export default function Home() {
     );
   }
 
+  // ==========================================
+  // PANTALLA DE LOGIN
+  // ==========================================
   if (!isLogged) {
     return (
       <div className="min-h-screen bg-[#010326] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans z-50">
@@ -355,9 +464,14 @@ export default function Home() {
           </form>
         </div>
 
-        <div className="mt-8 z-10 flex gap-6 text-[#F2F2F2]/50 text-xs font-bold uppercase tracking-widest">
-           <span>Suerte & Diversión</span>
-        </div>
+        {/* BOTÓN DE TUTORIAL EN LA PANTALLA DE INICIO */}
+        <button 
+          type="button" 
+          onClick={() => setShowTutorial(true)} 
+          className="mt-8 z-10 flex items-center gap-2 text-white bg-white/10 border border-white/20 px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest hover:bg-white/20 transition-all shadow-lg"
+        >
+           <Info className="w-5 h-5" /> ¿No sabés cómo jugar?
+        </button>
 
         {showTerms && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#010326]/80 backdrop-blur-sm animate-in fade-in duration-300">
@@ -385,6 +499,54 @@ export default function Home() {
             </div>
           </div>
         )}
+        
+        {/* MODAL DEL TUTORIAL DESDE LOGIN */}
+        {showTutorial && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#010326]/90 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowTutorial(false)}>
+            <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+              <div className="bg-[#F29188] p-5 flex justify-between items-center text-[#010326]">
+                <div className="flex items-center gap-2"><Info className="w-6 h-6" /><h3 className="font-black uppercase tracking-wider text-base">¿Cómo Jugar?</h3></div>
+                <button onClick={() => setShowTutorial(false)} className="hover:bg-black/10 p-1.5 rounded-full transition-colors" title="Cerrar"><X className="w-5 h-5"/></button>
+              </div>
+              <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-600 bg-slate-50">
+                <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="bg-blue-100 p-3 rounded-full text-[#4B68BF] shrink-0"><Ticket className="w-6 h-6"/></div>
+                  <div>
+                    <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">1. Elegí tus cartones</h4>
+                    <p className="mt-1 font-medium leading-snug">Seleccioná los cartones que más te gusten haciendo clic sobre ellos. Luego apretá el botón verde que dice "¡Estoy Listo!".</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="bg-red-100 p-3 rounded-full text-[#F22613] shrink-0"><Lock className="w-6 h-6"/></div>
+                  <div>
+                    <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">2. Confirmá tu pago</h4>
+                    <p className="mt-1 font-medium leading-snug">Tus cartones seleccionados quedarán bloqueados de forma segura hasta que te comuniques con el vendedor y él confirme tu pago.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="bg-purple-100 p-3 rounded-full text-purple-600 shrink-0"><RefreshCw className="w-6 h-6"/></div>
+                  <div>
+                    <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">3. Automático o Manual</h4>
+                    <p className="mt-1 font-medium leading-snug">Durante el sorteo, podés dejar que el sistema marque los números solos (Automático) o ir tocándolos vos mismo por diversión (Manual).</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="bg-yellow-100 p-3 rounded-full text-yellow-600 shrink-0"><Trophy className="w-6 h-6"/></div>
+                  <div>
+                    <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">4. ¡Ganar!</h4>
+                    <p className="mt-1 font-medium leading-snug">No hace falta gritar bingo. Si sos el primero en completar la línea o el cartón, ¡el sistema avisará a todos y te mostrará como ganador al instante!</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 border-t border-slate-200 bg-white text-center">
+                <button onClick={() => setShowTutorial(false)} className="w-full bg-[#4B68BF] text-white px-6 py-4 rounded-xl font-black hover:bg-blue-700 transition-colors uppercase tracking-widest text-sm shadow-md">
+                  ¡Entendido!
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }
@@ -451,6 +613,11 @@ export default function Home() {
           
           <div className="flex items-center gap-2">
             
+            {/* BOTÓN DE TUTORIAL ADENTRO DEL JUEGO */}
+            <button aria-label="Tutorial" onClick={() => setShowTutorial(true)} className="p-2.5 rounded-xl border transition-colors bg-blue-50 text-[#4B68BF] border-blue-200 hover:bg-blue-100" title="¿Cómo jugar?">
+              <Info className="w-4 h-4" />
+            </button>
+
             <button aria-label="Compartir Bingo" onClick={handleShare} className="p-2.5 rounded-xl border transition-colors bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" title="Invitar Amigos">
               <Share2 className="w-4 h-4" />
             </button>
@@ -591,7 +758,6 @@ export default function Home() {
             ) : (
               <div className="overflow-hidden relative w-full pt-4 pb-4">
                 <div className="animate-marquee gap-4 px-2">
-                  {/* Duplicamos la lista 4 veces para asegurar que el giro no tenga cortes */}
                   {[...displayedAds, ...displayedAds, ...displayedAds, ...displayedAds].map((ad, idx) => (
                     <div 
                       key={`${ad.id}-${idx}`} 
@@ -722,6 +888,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* PANTALLA DE GANADORES DE LÍNEA */}
       {lineWinners && lineWinners.length > 0 && (!bingoWinners || bingoWinners.length === 0) && !lineAlertDismissed && (
         <div className="bg-gradient-to-r from-[#4B68BF] to-indigo-600 text-white px-5 py-4 mx-4 md:mx-auto md:max-w-4xl mt-6 rounded-[1.5rem] shadow-2xl border-2 border-blue-400/50 flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 z-20 relative">
           <div className="absolute -top-3 -right-3 flex items-center gap-2">
@@ -743,6 +910,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* PANTALLA GIGANTE DE BINGO */}
       {bingoWinners && bingoWinners.length > 0 && (
         <div className="fixed inset-0 bg-[#010326]/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white p-8 md:p-10 rounded-[2.5rem] max-w-lg w-full text-center shadow-[0_0_100px_rgba(75,104,191,0.3)] animate-in zoom-in slide-in-from-bottom-10 border-[6px] border-yellow-400">
@@ -766,6 +934,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* EL TABLERO PRINCIPAL DE CARTONES */}
       {!hasPaid ? (
         <div className="max-w-md mx-auto px-4 py-12 flex flex-col items-center animate-in fade-in duration-500 mt-10">
           <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden w-full border-[4px] border-[#F22613]/20">
@@ -816,6 +985,87 @@ export default function Home() {
           )}
         </div>
       )}
+      
+      {/* MODAL DEL TUTORIAL INTERNO */}
+      {showTutorial && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#010326]/90 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowTutorial(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#F29188] p-5 flex justify-between items-center text-[#010326]">
+              <div className="flex items-center gap-2"><Info className="w-6 h-6" /><h3 className="font-black uppercase tracking-wider text-base">¿Cómo Jugar?</h3></div>
+              <button onClick={() => setShowTutorial(false)} className="hover:bg-black/10 p-1.5 rounded-full transition-colors" title="Cerrar"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-600 bg-slate-50">
+              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="bg-blue-100 p-3 rounded-full text-[#4B68BF] shrink-0"><Ticket className="w-6 h-6"/></div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">1. Elegí tus cartones</h4>
+                  <p className="mt-1 font-medium leading-snug">Seleccioná los cartones que más te gusten haciendo clic sobre ellos. Luego apretá el botón verde que dice "¡Estoy Listo!".</p>
+                </div>
+              </div>
+              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="bg-red-100 p-3 rounded-full text-[#F22613] shrink-0"><Lock className="w-6 h-6"/></div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">2. Confirmá tu pago</h4>
+                  <p className="mt-1 font-medium leading-snug">Tus cartones seleccionados quedarán bloqueados de forma segura hasta que te comuniques con el vendedor y él confirme tu pago.</p>
+                </div>
+              </div>
+              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="bg-purple-100 p-3 rounded-full text-purple-600 shrink-0"><RefreshCw className="w-6 h-6"/></div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">3. Automático o Manual</h4>
+                  <p className="mt-1 font-medium leading-snug">Durante el sorteo, podés dejar que el sistema marque los números solos (Automático) o ir tocándolos vos mismo por diversión (Manual).</p>
+                </div>
+              </div>
+              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="bg-yellow-100 p-3 rounded-full text-yellow-600 shrink-0"><Trophy className="w-6 h-6"/></div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">4. ¡Ganar!</h4>
+                  <p className="mt-1 font-medium leading-snug">No hace falta gritar bingo. Si sos el primero en completar la línea o el cartón, ¡el sistema avisará a todos y te mostrará como ganador al instante!</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-200 bg-white text-center">
+              <button onClick={() => setShowTutorial(false)} className="w-full bg-[#4B68BF] text-white px-6 py-4 rounded-xl font-black hover:bg-blue-700 transition-colors uppercase tracking-widest text-sm shadow-md">
+                ¡Entendido!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NUEVO CARTEL DE CONFIRMACIÓN PERSONALIZADO */}
+      {customConfirm.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#010326]/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 border-2 border-[#4B68BF]/20">
+            <div className="p-6 text-center flex flex-col items-center pt-8">
+              <div className="bg-red-50 p-4 rounded-full mb-4 shadow-inner">
+                {customConfirm.iconType === 'trash' ? (
+                  <Trash2 className="w-8 h-8 text-[#F22613]" />
+                ) : (
+                  <LogOut className="w-8 h-8 text-[#F22613]" />
+                )}
+              </div>
+              <h3 className="text-xl font-black text-slate-800 mb-2 uppercase tracking-tight">{customConfirm.title}</h3>
+              <p className="text-slate-600 text-sm font-medium px-2">{customConfirm.message}</p>
+            </div>
+            <div className="p-4 bg-slate-50 flex gap-3 border-t border-slate-100">
+              <button
+                onClick={() => setCustomConfirm(prev => ({ ...prev, isOpen: false }))}
+                className="flex-1 bg-white text-slate-600 font-bold py-3.5 rounded-xl border border-slate-200 hover:bg-slate-100 transition-all uppercase text-xs tracking-widest shadow-sm"
+              >
+                {customConfirm.cancelText}
+              </button>
+              <button
+                onClick={customConfirm.onConfirm}
+                className="flex-1 bg-[#F22613] text-white font-black py-3.5 rounded-xl shadow-md hover:bg-red-600 transition-all uppercase text-xs tracking-widest active:scale-95"
+              >
+                {customConfirm.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }

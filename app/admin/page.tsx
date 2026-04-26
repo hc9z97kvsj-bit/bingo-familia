@@ -103,6 +103,10 @@ export default function AdminPanel() {
     const timestampId = Date.now();
 
     for (const card of occupiedCards) {
+      
+      // ===========================
+      // DETECCIÓN DE CARTÓN LLENO
+      // ===========================
       if (gameState.winningMode === 'bingo-only' || gameState.winningMode === 'line-and-bingo') {
           const hasBingo = card.numbers.every((n: number) => newDrawn.includes(n));
           if (hasBingo) {
@@ -114,25 +118,42 @@ export default function AdminPanel() {
           }
       }
 
+      // ===========================
+      // DETECCIÓN DE LÍNEA MEJORADA (A PRUEBA DE BALAS)
+      // ===========================
       if ((gameState.winningMode === 'line-only' || gameState.winningMode === 'line-and-bingo') && (!gameState.lineWinner || gameState.lineWinner.length === 0)) {
-        let safeGrid: number[][] = [];
+        let safeGrid: any[] = [];
         try { safeGrid = typeof card.grid === 'string' ? JSON.parse(card.grid) : card.grid; } catch (e) {}
 
         for (let r = 0; r < 3; r++) {
-          const rowNumbers = safeGrid[r].filter(n => n !== 0);
-          if (rowNumbers.length === 5 && rowNumbers.every(n => newDrawn.includes(n))) {
+          let rowNumbers: number[] = [];
+          
+          // Si existe el grid nativo, lo usamos
+          if (safeGrid && safeGrid.length === 3 && safeGrid[r]) {
+            rowNumbers = safeGrid[r].filter((n: any) => n !== 0);
+          } 
+          // Si falló el grid pero tenemos los 15 números, los cortamos matemáticamente (5 por fila)
+          else if (card.numbers && card.numbers.length === 15) {
+            rowNumbers = card.numbers.slice(r * 5, (r + 1) * 5);
+          }
+
+          // Si logró juntar los 5 números exactos de esa fila, verificamos si están cantados
+          if (rowNumbers.length === 5 && rowNumbers.every((n: number) => newDrawn.includes(n))) {
             detectedLines.push({ userId: card.ownerId || '', name: card.ownerName || '', cardId: card.id, timestamp: timeString, prize: gameState.prizes?.line || prizes.line });
             isNewLine = true;
             const winId = `win_line_${timestampId}_${card.id}`;
             await update(ref(db, `users/${card.ownerId}/winHistory/${winId}`), {
               id: winId, type: 'LÍNEA', dateString, timeString, cardId: card.id, winningNumbers: rowNumbers.join(' - '), prize: gameState.prizes?.line || prizes.line, paid: false, timestamp: timestampId
             });
-            break; 
+            break; // Salimos de la comprobación de filas de este cartón para no cantar línea dos veces
           }
         }
       }
     }
 
+    // ===========================
+    // GUARDADO EN FIREBASE
+    // ===========================
     let isGameOver = false;
     if (detectedBingos.length > 0 && (gameState.winningMode === 'bingo-only' || gameState.winningMode === 'line-and-bingo')) isGameOver = true;
     if (isNewLine && gameState.winningMode === 'line-only') isGameOver = true;
@@ -239,7 +260,6 @@ export default function AdminPanel() {
                   {gameState.status === 'waiting' ? 'EN ESPERA' : gameState.status === 'playing' ? 'EN CURSO' : 'FINALIZADO'}
                 </span>
                 
-                {/* ETIQUETA CANDADO EN EL HEADER */}
                 <span className={`text-xs font-black px-3 py-1 rounded-lg ml-2 flex items-center gap-1 ${gameState.isGameLocked ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'}`}>
                    {gameState.isGameLocked ? <><Lock className="w-3 h-3" /> SALA CERRADA</> : <><Unlock className="w-3 h-3" /> SALA ABIERTA</>}
                 </span>
@@ -261,7 +281,6 @@ export default function AdminPanel() {
                 <Link href="/admin/historial" className="flex items-center gap-2 bg-[#4B68BF]/20 text-[#4B68BF] border border-[#4B68BF]/50 px-6 py-3 rounded-xl font-black hover:bg-[#4B68BF]/30 transition-all text-sm shadow-md"><History className="w-4 h-4" /> Auditoría</Link>
                 <button onClick={initDatabase} disabled={isInitializing} className="flex items-center gap-2 bg-[#F2F2F2] text-[#010326] border border-[#F2F2F2] px-6 py-3 rounded-xl font-black hover:bg-gray-300 transition-all text-sm shadow-md"><RotateCcw className="w-4 h-4" /> Reset DB</button>
                 
-                {/* BOTÓN MAGICO DE ABRIR/CERRAR SALA */}
                 <button onClick={toggleGameLock} className={`flex items-center gap-2 border px-6 py-3 rounded-xl font-black transition-all text-sm shadow-md ${gameState.isGameLocked ? 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600' : 'bg-slate-700 text-white border-slate-600 hover:bg-slate-800'}`}>
                    {gameState.isGameLocked ? <><Unlock className="w-4 h-4" /> ABRIR SALA</> : <><Lock className="w-4 h-4" /> CERRAR SALA</>}
                 </button>
