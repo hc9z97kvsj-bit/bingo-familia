@@ -49,7 +49,7 @@ export default function Home() {
   const [hasInteracted, setHasInteracted] = useState(false);
 
   const announcedLineRef = useRef(false);
-  const announcedBingoRef = useRef(false); // <--- NUEVA REFERENCIA PARA NO REPETIR EL GRITO DE BINGO
+  const announcedBingoRef = useRef(false);
   const hasCheckedRestore = useRef(false); 
 
   const [selectedZone, setSelectedZone] = useState('Todas');
@@ -68,7 +68,7 @@ export default function Home() {
   const hasPaid = currentUser?.hasPaidCards || false;
   const myCards = cards.filter(c => c.ownerId === userId);
   
-  const myWins = currentUser?.winHistory ? Object.values(currentUser.winHistory).sort((a, b) => b.timestamp - a.timestamp) : [];
+  const myWins = currentUser?.winHistory ? Object.values(currentUser.winHistory).sort((a: any, b: any) => b.timestamp - a.timestamp) : [];
 
   const getCleanAudioUrl = (url: string) => {
     if (!url) return '';
@@ -164,7 +164,7 @@ export default function Home() {
       setMarkMode('auto');
       setLineAlertDismissed(false);
       announcedLineRef.current = false; 
-      announcedBingoRef.current = false; // Resetear grito de bingo
+      announcedBingoRef.current = false;
     }
   }, [gameState.status]);
 
@@ -192,9 +192,6 @@ export default function Home() {
     prevDrawnCount.current = gameState.drawnNumbers.length;
   }, [gameState.drawnNumbers, isVoiceEnabled, hasInteracted]);
 
-  // ==========================================
-  // EFECTO PARA GRITAR "LÍNEA" Y SONIDO
-  // ==========================================
   useEffect(() => {
     if (gameState.lineWinner && gameState.lineWinner.length > 0 && !announcedLineRef.current) {
       announcedLineRef.current = true; 
@@ -203,7 +200,6 @@ export default function Home() {
 
       if (hasInteracted) {
         try {
-          // Sonido de campana de alerta directo de Google
           const lineSound = new Audio('https://actions.google.com/sounds/v1/alarms/ding_dong.ogg');
           lineSound.volume = 0.7;
           lineSound.play().catch(() => {});
@@ -211,7 +207,7 @@ export default function Home() {
 
         if (isVoiceEnabled && window.speechSynthesis) {
           window.speechSynthesis.cancel();
-          const names = gameState.lineWinner.map(w => w.name).join(' y ');
+          const names = gameState.lineWinner.map((w: any) => w.name).join(' y ');
           const speech = new SpeechSynthesisUtterance(`¡Línea! de ${names}`);
           speech.lang = 'es-AR';
           window.speechSynthesis.speak(speech);
@@ -220,16 +216,12 @@ export default function Home() {
     }
   }, [gameState.lineWinner, isVoiceEnabled, hasInteracted]);
 
-  // ==========================================
-  // EFECTO PARA GRITAR "BINGO" Y SONIDO
-  // ==========================================
   useEffect(() => {
     if (gameState.winner && gameState.winner.length > 0 && !announcedBingoRef.current) {
       announcedBingoRef.current = true;
 
       if (hasInteracted) {
         try {
-          // Sonido de Casino Jackpot de Google
           const bingoSound = new Audio('https://actions.google.com/sounds/v1/foley/casino_jackpot.ogg');
           bingoSound.volume = 1.0;
           bingoSound.play().catch(() => {});
@@ -237,7 +229,7 @@ export default function Home() {
 
         if (isVoiceEnabled && window.speechSynthesis) {
           window.speechSynthesis.cancel();
-          const names = gameState.winner.map(w => w.name).join(' y ');
+          const names = gameState.winner.map((w: any) => w.name).join(' y ');
           const speech = new SpeechSynthesisUtterance(`¡Bingo! Tenemos ganador. Felicitaciones a ${names}`);
           speech.lang = 'es-AR';
           window.speechSynthesis.speak(speech);
@@ -343,7 +335,7 @@ export default function Home() {
   const handleToggleReady = async () => {
     const newReadyState = !isReady;
     if (newReadyState && myCards.length > 0) {
-      await update(ref(db, `users/${userId}`), { lastPlayedCards: myCards.map(c => c.id), lastPlayedDate: Date.now() });
+      await update(ref(db, `users/${userId}`), { lastPlayedCards: myCards.map((c: any) => c.id), lastPlayedDate: Date.now() });
     }
     await toggleReady(userId, newReadyState);
   };
@@ -352,7 +344,7 @@ export default function Home() {
     setShowRestoreModal(false);
     if (!currentUser?.lastPlayedCards) return;
     const available: string[] = []; const taken: string[] = [];
-    currentUser.lastPlayedCards.forEach(cardId => {
+    currentUser.lastPlayedCards.forEach((cardId: string) => {
       const card = cards.find(c => c.id === cardId);
       if (card && (!card.ownerId || card.ownerId === "")) available.push(cardId); else taken.push(cardId);
     });
@@ -383,14 +375,15 @@ export default function Home() {
     setMarkMode(mode);
     if (mode === 'manual') {
       const newMarks: Record<string, number[]> = {};
-      myCards.forEach(card => { newMarks[card.id] = card.numbers.filter(n => gameState.drawnNumbers.includes(n)); });
+      // ACÁ ESTABA EL ERROR DEL SERVIDOR, AHORA DICE "(n: number)"
+      myCards.forEach(card => { newMarks[card.id] = card.numbers.filter((n: number) => gameState.drawnNumbers.includes(n)); });
       setManualMarks(newMarks);
     }
   };
 
-  const activeAds = ads ? ads.filter(a => a.isActive) : [];
-  const uniqueZones = ['Todas', ...Array.from(new Set(activeAds.map(a => a.zone)))];
-  const displayedAds = activeAds.filter(a => selectedZone === 'Todas' || a.zone === selectedZone);
+  const activeAds = ads ? ads.filter((a: any) => a.isActive) : [];
+  const uniqueZones = ['Todas', ...Array.from(new Set(activeAds.map((a: any) => a.zone)))];
+  const displayedAds = activeAds.filter((a: any) => selectedZone === 'Todas' || a.zone === selectedZone);
 
   if (gameState.isGameLocked) {
     return (
@@ -745,7 +738,7 @@ export default function Home() {
             <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center overflow-x-auto">
               <span className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5 whitespace-nowrap"><Star className="w-4 h-4 text-yellow-400 fill-current" /> Apoyan este Bingo</span>
               <div className="flex gap-2 ml-4">
-                {uniqueZones.map(zone => (
+                {uniqueZones.map((zone: string) => (
                   <button key={zone} onClick={() => setSelectedZone(zone)} className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${selectedZone === zone ? 'bg-[#4B68BF] text-white' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}>
                     {zone}
                   </button>
@@ -758,7 +751,7 @@ export default function Home() {
             ) : (
               <div className="overflow-hidden relative w-full pt-4 pb-4">
                 <div className="animate-marquee gap-4 px-2">
-                  {[...displayedAds, ...displayedAds, ...displayedAds, ...displayedAds].map((ad, idx) => (
+                  {[...displayedAds, ...displayedAds, ...displayedAds, ...displayedAds].map((ad: any, idx: number) => (
                     <div 
                       key={`${ad.id}-${idx}`} 
                       onClick={() => setSelectedAd(ad)} 
@@ -831,7 +824,7 @@ export default function Home() {
                   <p className="text-xs mt-1">¡Seguí participando para ganar!</p>
                 </div>
               ) : (
-                myWins.map(win => (
+                myWins.map((win: any) => (
                   <div key={win.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-2 relative overflow-hidden shadow-sm">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#F29188] to-[#4B68BF]"></div>
                     <div className="flex justify-between items-start pl-2">
@@ -899,8 +892,8 @@ export default function Home() {
             <Banknote className="w-12 h-12 text-yellow-300 animate-bounce drop-shadow-lg" />
             <div>
               <p className="font-black text-xl md:text-2xl leading-tight uppercase tracking-wide text-yellow-300 drop-shadow-md">{lineWinners.length > 1 ? '¡EMPATE DE LÍNEA!' : '¡LÍNEA!'}</p>
-              <p className="text-blue-100 font-bold mt-1 text-lg">{lineWinners.map(w => w.name).join(' y ')}</p>
-              <p className="text-blue-200/80 text-sm font-medium">Cartones: {lineWinners.map(w => w.cardId).join(', ')}</p>
+              <p className="text-blue-100 font-bold mt-1 text-lg">{lineWinners.map((w: any) => w.name).join(' y ')}</p>
+              <p className="text-blue-200/80 text-sm font-medium">Cartones: {lineWinners.map((w: any) => w.cardId).join(', ')}</p>
             </div>
           </div>
           <div className="bg-white/10 backdrop-blur-md text-white px-8 py-3 rounded-2xl font-black shadow-inner border border-white/20 text-center w-full md:w-auto">
@@ -918,7 +911,7 @@ export default function Home() {
             <h2 className="text-4xl md:text-5xl font-black text-[#010326] mb-3 uppercase tracking-tight">{bingoWinners.length > 1 ? '¡EMPATE MÚLTIPLE!' : '¡BINGO!'}</h2>
             <div className="w-20 h-1.5 bg-yellow-400 mx-auto rounded-full mb-8"></div>
             <div className="space-y-3 mb-8 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
-                {bingoWinners.map((w, idx) => (
+                {bingoWinners.map((w: any, idx: number) => (
                     <div key={idx} className="bg-slate-50 border border-slate-200 py-4 px-4 rounded-2xl flex flex-col items-center shadow-sm">
                         <span className="text-2xl text-[#010326] font-black mb-1">{w.name}</span>
                         <span className="text-[#4B68BF] font-black text-sm bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">Cartón Nº {w.cardId}</span>
@@ -930,105 +923,6 @@ export default function Home() {
               <span className="text-5xl md:text-6xl">${bingoWinners[0]?.prize}</span>
             </div>
             <button onClick={() => window.location.reload()} className="w-full bg-[#010326] text-white px-8 py-5 rounded-2xl font-black text-xl hover:bg-[#4B68BF] active:scale-95 transition-all shadow-xl">Cerrar y Ver Tablero</button>
-          </div>
-        </div>
-      )}
-
-      {/* EL TABLERO PRINCIPAL DE CARTONES */}
-      {!hasPaid ? (
-        <div className="max-w-md mx-auto px-4 py-12 flex flex-col items-center animate-in fade-in duration-500 mt-10">
-          <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden w-full border-[4px] border-[#F22613]/20">
-            <div className="absolute top-0 left-0 w-full h-3 bg-[#F22613]"></div>
-            <div className="w-24 h-24 bg-[#F22613]/10 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner"><Lock className="w-12 h-12 text-[#F22613]" /></div>
-            <h2 className="text-3xl font-black text-[#010326] uppercase tracking-tight mb-3">Tablero Bloqueado</h2>
-            <p className="text-slate-600 font-medium text-sm mb-8 leading-relaxed">Para poder elegir tus cartones y participar del sorteo, necesitamos confirmar tu pago. <br/><br/>Por favor, comunícate y envía tu comprobante al organizador.</p>
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex items-center justify-center gap-3 text-slate-500 font-bold text-xs uppercase tracking-widest shadow-inner"><RefreshCw className="w-5 h-5 animate-spin text-[#4B68BF]" /> Esperando confirmación...</div>
-          </div>
-        </div>
-      ) : (
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          {isWaiting && (
-            <div className="mb-8 sticky top-[140px] z-20">
-              <input type="number" placeholder="🔍 Buscar cartón por número..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-4 md:p-5 bg-white border-2 border-slate-200 rounded-2xl text-lg font-bold text-[#010326] shadow-lg shadow-slate-200/50 focus:border-[#4B68BF] focus:ring-4 focus:ring-[#4B68BF]/10 outline-none transition-all placeholder:text-slate-400" />
-            </div>
-          )}
-
-          {!isWaiting && (
-            <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-end border-b-2 border-slate-200 pb-4 gap-4">
-              <div className="flex-1">
-                <h2 className="text-2xl md:text-3xl font-black text-[#010326] tracking-tight">Tus Cartones</h2>
-                {markMode === 'auto' ? (
-                  <p className="text-slate-500 text-sm font-bold mt-1">El marcado es 100% automático.</p>
-                ) : (
-                  <p className="text-[#4B68BF] text-sm md:text-base font-black mt-1 animate-pulse">👉 MODO MANUAL: Tocá los números sorteados para marcarlos.</p>
-                )}
-              </div>
-              <div className="flex bg-slate-200 p-1.5 rounded-xl shadow-inner w-full md:w-auto">
-                  <button onClick={() => handleModeSwitch('auto')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${markMode === 'auto' ? 'bg-white text-[#4B68BF] shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Automático</button>
-                  <button onClick={() => handleModeSwitch('manual')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${markMode === 'manual' ? 'bg-white text-[#4B68BF] shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Manual</button>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-            {visibleCards.map(card => (
-              <BingoCard key={card.id} card={card} userId={userId} drawnNumbers={gameState.drawnNumbers} onSelect={handleSelect} gameStatus={gameState.status} markMode={markMode} manualMarks={manualMarks[card.id] || []} onMarkNumber={handleMarkNumber} isReady={isReady} />
-            ))}
-          </div>
-
-          {isWaiting && visibleCards.length < filteredCards.length && (
-            <div className="mt-10 text-center">
-              <button onClick={() => setVisibleCount(prev => prev + 20)} className="w-full md:w-auto bg-white border-2 border-slate-200 text-[#010326] font-black text-lg px-10 py-4 rounded-2xl hover:border-[#4B68BF] hover:text-[#4B68BF] hover:bg-slate-50 active:scale-95 transition-all shadow-sm">
-                Cargar más cartones ↓
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* MODAL DEL TUTORIAL INTERNO */}
-      {showTutorial && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#010326]/90 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowTutorial(false)}>
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-            <div className="bg-[#F29188] p-5 flex justify-between items-center text-[#010326]">
-              <div className="flex items-center gap-2"><Info className="w-6 h-6" /><h3 className="font-black uppercase tracking-wider text-base">¿Cómo Jugar?</h3></div>
-              <button onClick={() => setShowTutorial(false)} className="hover:bg-black/10 p-1.5 rounded-full transition-colors" title="Cerrar"><X className="w-5 h-5"/></button>
-            </div>
-            <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-600 bg-slate-50">
-              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                <div className="bg-blue-100 p-3 rounded-full text-[#4B68BF] shrink-0"><Ticket className="w-6 h-6"/></div>
-                <div>
-                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">1. Elegí tus cartones</h4>
-                  <p className="mt-1 font-medium leading-snug">Seleccioná los cartones que más te gusten haciendo clic sobre ellos. Luego apretá el botón verde que dice "¡Estoy Listo!".</p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                <div className="bg-red-100 p-3 rounded-full text-[#F22613] shrink-0"><Lock className="w-6 h-6"/></div>
-                <div>
-                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">2. Confirmá tu pago</h4>
-                  <p className="mt-1 font-medium leading-snug">Tus cartones seleccionados quedarán bloqueados de forma segura hasta que te comuniques con el vendedor y él confirme tu pago.</p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                <div className="bg-purple-100 p-3 rounded-full text-purple-600 shrink-0"><RefreshCw className="w-6 h-6"/></div>
-                <div>
-                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">3. Automático o Manual</h4>
-                  <p className="mt-1 font-medium leading-snug">Durante el sorteo, podés dejar que el sistema marque los números solos (Automático) o ir tocándolos vos mismo por diversión (Manual).</p>
-                </div>
-              </div>
-              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                <div className="bg-yellow-100 p-3 rounded-full text-yellow-600 shrink-0"><Trophy className="w-6 h-6"/></div>
-                <div>
-                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">4. ¡Ganar!</h4>
-                  <p className="mt-1 font-medium leading-snug">No hace falta gritar bingo. Si sos el primero en completar la línea o el cartón, ¡el sistema avisará a todos y te mostrará como ganador al instante!</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 border-t border-slate-200 bg-white text-center">
-              <button onClick={() => setShowTutorial(false)} className="w-full bg-[#4B68BF] text-white px-6 py-4 rounded-xl font-black hover:bg-blue-700 transition-colors uppercase tracking-widest text-sm shadow-md">
-                ¡Entendido!
-              </button>
-            </div>
           </div>
         </div>
       )}
