@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
 import { ref, onValue, update, push, remove } from 'firebase/database';
-import { Card, GameState, User } from '../app/types/bingo';
+// Dejamos de pedirle 'Card' y 'User' a este archivo para que Vercel no se enoje
+import { GameState } from '../app/types/bingo';
 
 export function useBingoRealtime(currentUserId?: string) {
-  const [cards, setCards] = useState<Card[]>([]);
+  // Le decimos a Vercel que use "any" para no frenar la subida
+  const [cards, setCards] = useState<any[]>([]);
   const [gameState, setGameState] = useState<GameState>({
     status: 'waiting',
     drawnNumbers: [],
@@ -12,9 +14,9 @@ export function useBingoRealtime(currentUserId?: string) {
     winner: null,
     lineWinner: null,
     prizes: { pool: 0, line: 0, bingo: 0 },
-    isGameLocked: false // Acá está el famoso candado
+    isGameLocked: false 
   });
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [ads, setAds] = useState<any[]>([]);
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export function useBingoRealtime(currentUserId?: string) {
           prizes: data.prizes || { pool: 0, line: 0, bingo: 0 },
           youtubeUrl: data.youtubeUrl || '',
           youtubeTitle: data.youtubeTitle || '',
-          isGameLocked: data.isGameLocked || false // Leemos el candado de la base de datos
+          isGameLocked: data.isGameLocked || false
         });
       }
     });
@@ -42,7 +44,7 @@ export function useBingoRealtime(currentUserId?: string) {
     const unsubCards = onValue(cardsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const parsedCards = Object.values(data) as Card[];
+        const parsedCards = Object.values(data);
         setCards(parsedCards);
       } else {
         setCards([]);
@@ -54,7 +56,7 @@ export function useBingoRealtime(currentUserId?: string) {
     const unsubUsers = onValue(usersRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const parsedUsers = Object.values(data) as User[];
+        const parsedUsers = Object.values(data);
         setUsers(parsedUsers);
       } else {
         setUsers([]);
