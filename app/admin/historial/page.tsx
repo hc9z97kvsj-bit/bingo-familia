@@ -15,7 +15,7 @@ export default function HistorialPanel() {
   
   users.forEach((user: any) => {
     if (user.winHistory) {
-      // ACÁ ESTÁ LA MAGIA: (win: any) PARA QUE VERCEL NO LLORE
+      // ACÁ ESTÁ EL CAMBIO CLAVE PARA VERCEL: (win: any)
       const userWins = Object.values(user.winHistory).map((win: any) => {
         const cardInfo = cards.find((c: any) => c.id === win.cardId);
         return {
