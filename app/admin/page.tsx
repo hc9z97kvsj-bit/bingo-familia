@@ -69,7 +69,7 @@ export default function AdminPanel() {
 
   const deleteUser = async (userId: string) => {
     if(!confirm("⚠️ ¿ELIMINAR AL JUGADOR?\n\nPerderá todos sus cartones, historial de victorias y será desconectado del juego.")) return;
-    const userCards = cards.filter(c => c.ownerId === userId);
+    const userCards = cards.filter((c: any) => c.ownerId === userId);
     for(const c of userCards) { await update(ref(db, `cards/${c.id}`), { ownerId: "", ownerName: "" }); }
     await set(ref(db, `users/${userId}`), null);
   };
@@ -90,7 +90,7 @@ export default function AdminPanel() {
     if (gameState.drawnNumbers.includes(num)) return alert("El número ya fue sorteado");
 
     const newDrawn = [...gameState.drawnNumbers, num];
-    const occupiedCards = cards.filter(c => Boolean(c.ownerId) && c.ownerId !== "");
+    const occupiedCards = cards.filter((c: any) => Boolean(c.ownerId) && c.ownerId !== "");
     
     let detectedBingos: WinnerInfo[] = [];
     let detectedLines: WinnerInfo[] = gameState.lineWinner || []; 
@@ -103,10 +103,6 @@ export default function AdminPanel() {
     const timestampId = Date.now();
 
     for (const card of occupiedCards) {
-      
-      // ===========================
-      // DETECCIÓN DE CARTÓN LLENO
-      // ===========================
       if (gameState.winningMode === 'bingo-only' || gameState.winningMode === 'line-and-bingo') {
           const hasBingo = card.numbers.every((n: number) => newDrawn.includes(n));
           if (hasBingo) {
@@ -118,9 +114,6 @@ export default function AdminPanel() {
           }
       }
 
-      // ===========================
-      // DETECCIÓN DE LÍNEA MEJORADA (A PRUEBA DE BALAS)
-      // ===========================
       if ((gameState.winningMode === 'line-only' || gameState.winningMode === 'line-and-bingo') && (!gameState.lineWinner || gameState.lineWinner.length === 0)) {
         let safeGrid: any[] = [];
         try { safeGrid = typeof card.grid === 'string' ? JSON.parse(card.grid) : card.grid; } catch (e) {}
@@ -128,16 +121,13 @@ export default function AdminPanel() {
         for (let r = 0; r < 3; r++) {
           let rowNumbers: number[] = [];
           
-          // Si existe el grid nativo, lo usamos
           if (safeGrid && safeGrid.length === 3 && safeGrid[r]) {
             rowNumbers = safeGrid[r].filter((n: any) => n !== 0);
           } 
-          // Si falló el grid pero tenemos los 15 números, los cortamos matemáticamente (5 por fila)
           else if (card.numbers && card.numbers.length === 15) {
             rowNumbers = card.numbers.slice(r * 5, (r + 1) * 5);
           }
 
-          // Si logró juntar los 5 números exactos de esa fila, verificamos si están cantados
           if (rowNumbers.length === 5 && rowNumbers.every((n: number) => newDrawn.includes(n))) {
             detectedLines.push({ userId: card.ownerId || '', name: card.ownerName || '', cardId: card.id, timestamp: timeString, prize: gameState.prizes?.line || prizes.line });
             isNewLine = true;
@@ -145,15 +135,12 @@ export default function AdminPanel() {
             await update(ref(db, `users/${card.ownerId}/winHistory/${winId}`), {
               id: winId, type: 'LÍNEA', dateString, timeString, cardId: card.id, winningNumbers: rowNumbers.join(' - '), prize: gameState.prizes?.line || prizes.line, paid: false, timestamp: timestampId
             });
-            break; // Salimos de la comprobación de filas de este cartón para no cantar línea dos veces
+            break; 
           }
         }
       }
     }
 
-    // ===========================
-    // GUARDADO EN FIREBASE
-    // ===========================
     let isGameOver = false;
     if (detectedBingos.length > 0 && (gameState.winningMode === 'bingo-only' || gameState.winningMode === 'line-and-bingo')) isGameOver = true;
     if (isNewLine && gameState.winningMode === 'line-only') isGameOver = true;
@@ -223,12 +210,12 @@ export default function AdminPanel() {
     setEditingAdId(ad.id);
   };
 
-  const occupiedCardsCount = cards.filter(c => Boolean(c.ownerId) && c.ownerId !== "").length;
+  const occupiedCardsCount = cards.filter((c: any) => Boolean(c.ownerId) && c.ownerId !== "").length;
   const lastNumber = gameState.drawnNumbers.length > 0 ? gameState.drawnNumbers[gameState.drawnNumbers.length - 1] : null;
-  const usersReadyCount = users.filter(user => user.isReady).length;
-  const usersPaidCount = users.filter(user => user.hasPaidCards).length;
+  const usersReadyCount = users.filter((user: any) => user.isReady).length;
+  const usersPaidCount = users.filter((user: any) => user.hasPaidCards).length;
 
-  const filteredUsers = users.filter(u => {
+  const filteredUsers = users.filter((u: any) => {
     if (userFilter === 'online') return u.isOnline;
     if (userFilter === 'offline') return !u.isOnline;
     if (userFilter === 'unpaid') return !u.hasPaidCards;
@@ -341,7 +328,7 @@ export default function AdminPanel() {
         {(gameState.winner || gameState.lineWinner) && (
           <div className="space-y-4">
             {gameState.winner?.map((w, i) => {
-              const winnerUser = users.find(u => u.id === w.userId);
+              const winnerUser = users.find((u: any) => u.id === w.userId);
               const winnerPhone = winnerUser?.phone || 'Sin número registrado';
               return (
                 <div key={`winner-${i}`} className="bg-gradient-to-r from-[#F29188] to-[#4B68BF] border-4 border-[#F2F2F2] p-8 md:p-10 rounded-[2.5rem] flex flex-col md:flex-row justify-between items-center gap-6 shadow-[0_0_40px_rgba(242,145,136,0.4)] animate-in zoom-in duration-500">
@@ -367,7 +354,7 @@ export default function AdminPanel() {
               );
             })}
             {gameState.lineWinner && !gameState.winner && gameState.lineWinner.map((w, i) => {
-              const lineWinnerUser = users.find(u => u.id === w.userId);
+              const lineWinnerUser = users.find((u: any) => u.id === w.userId);
               const lineWinnerPhone = lineWinnerUser?.phone || 'Sin número registrado';
               return (
                 <div key={`linewinner-${i}`} className="bg-[#4B68BF] border-4 border-[#010326] p-8 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-6 shadow-[0_0_30px_rgba(75,104,191,0.5)]">
@@ -440,8 +427,9 @@ export default function AdminPanel() {
             </div>
 
             <div className="space-y-4 flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4B68BF]/50 pb-4">
-              {filteredUsers.map((user, index) => {
-                const winsArray = user.winHistory ? Object.values(user.winHistory).sort((a,b) => b.timestamp - a.timestamp) : [];
+              {filteredUsers.map((user: any, index: number) => {
+                // ACÁ ESTABA EL ERROR EXACTO. LO ARREGLAMOS PONIENDO (a: any, b: any)
+                const winsArray = user.winHistory ? Object.values(user.winHistory).sort((a: any, b: any) => b.timestamp - a.timestamp) : [];
                 return (
                   <div key={user.id || `user-${index}`} className={`bg-white/5 p-5 rounded-2xl border transition-all shadow-sm relative ${user.hasPaidCards ? 'border-emerald-500/30 hover:border-emerald-500/60' : 'border-[#4B68BF]/20 hover:border-[#F29188]/50'}`}>
                     <button aria-label="Eliminar Jugador" title="Eliminar Jugador" onClick={() => deleteUser(user.id)} className="absolute top-4 right-4 text-slate-500 hover:text-[#F22613] transition-colors"><Trash2 className="w-4 h-4" /></button>
@@ -460,7 +448,7 @@ export default function AdminPanel() {
                       <div className="bg-[#010326]/50 border border-white/5 rounded-xl p-3 mb-4">
                         <p className="text-[10px] font-black text-yellow-500 uppercase tracking-widest mb-2 flex items-center gap-2"><Trophy className="w-3 h-3" /> Premios Ganados</p>
                         <div className="space-y-2">
-                          {winsArray.map((win, wIdx) => (
+                          {winsArray.map((win: any, wIdx: number) => (
                             <div key={win.id || `win-${wIdx}`} className="flex flex-col gap-2 bg-white/5 p-2 rounded-lg text-xs font-medium border border-white/5">
                               <div className="flex justify-between items-center text-[#F2F2F2]/80"><span><strong className="text-white">{win.type}</strong> | Cº {win.cardId}</span><span>{win.timeString}</span></div>
                               <div className="flex justify-between items-center mt-1 border-t border-white/5 pt-2">
@@ -557,7 +545,7 @@ export default function AdminPanel() {
             <div className="lg:col-span-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {ads.length === 0 && <p className="text-slate-500 text-sm col-span-2 text-center py-10">No hay publicidades cargadas actualmente.</p>}
-                {ads.map(ad => (
+                {ads.map((ad: any) => (
                   <div key={ad.id} className={`flex gap-4 p-4 rounded-2xl border transition-all ${ad.isActive ? 'bg-white/5 border-[#4B68BF]/40' : 'bg-black/20 border-white/5 opacity-60'}`}>
                     <img src={ad.imageUrl} alt={ad.name} className="w-20 h-20 object-cover rounded-xl border-2 border-slate-800" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150?text=Error+Imagen')} />
                     <div className="flex flex-col justify-between flex-1">
