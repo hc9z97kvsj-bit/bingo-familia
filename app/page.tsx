@@ -62,11 +62,11 @@ export default function Home() {
   const prevDrawnCount = useRef(0);
   const prevStatusRef = useRef(gameState.status);
 
-  const currentUser = users.find(u => u.id === userId);
+  const currentUser = users.find((u: any) => u.id === userId);
   const isReady = currentUser?.isReady || false;
   const maxCards = currentUser?.maxCards || 6; 
   const hasPaid = currentUser?.hasPaidCards || false;
-  const myCards = cards.filter(c => c.ownerId === userId);
+  const myCards = cards.filter((c: any) => c.ownerId === userId);
   
   const myWins = currentUser?.winHistory ? Object.values(currentUser.winHistory).sort((a: any, b: any) => b.timestamp - a.timestamp) : [];
 
@@ -313,7 +313,8 @@ export default function Home() {
   };
 
   const handleSelect = async (cardId: string) => {
-    if (gameState.status !== 'waiting' || isReady || !hasPaid) return;
+    // ELIMINÉ LA RESTRICCIÓN DE PAGO PARA QUE PUEDAN ELEGIR
+    if (gameState.status !== 'waiting' || isReady) return; 
     await selectCard(cardId, userId, userName);
   };
 
@@ -345,11 +346,11 @@ export default function Home() {
     if (!currentUser?.lastPlayedCards) return;
     const available: string[] = []; const taken: string[] = [];
     currentUser.lastPlayedCards.forEach((cardId: string) => {
-      const card = cards.find(c => c.id === cardId);
+      const card = cards.find((c: any) => c.id === cardId);
       if (card && (!card.ownerId || card.ownerId === "")) available.push(cardId); else taken.push(cardId);
     });
     const updates: any = {};
-    available.forEach(cardId => { updates[`cards/${cardId}/ownerId`] = userId; updates[`cards/${cardId}/ownerName`] = userName; });
+    available.forEach((cardId: string) => { updates[`cards/${cardId}/ownerId`] = userId; updates[`cards/${cardId}/ownerName`] = userName; });
     if (Object.keys(updates).length > 0) await update(ref(db), updates);
     if (taken.length > 0) alert(`⚠️ Recuperamos ${available.length} de tus cartones anteriores.\n\nLamentablemente, los cartones: [${taken.join(', ')}] ya fueron ocupados por alguien más en esta partida.\n\nElegí otros cartones para completar tu límite.`);
   };
@@ -375,8 +376,8 @@ export default function Home() {
     setMarkMode(mode);
     if (mode === 'manual') {
       const newMarks: Record<string, number[]> = {};
-      // ACÁ ESTABA EL ERROR DEL SERVIDOR, AHORA DICE "(n: number)"
-      myCards.forEach(card => { newMarks[card.id] = card.numbers.filter((n: number) => gameState.drawnNumbers.includes(n)); });
+      // ACÁ ESTÁ EL ARREGLO DE VERCEL -> (n: any)
+      myCards.forEach((card: any) => { newMarks[card.id] = card.numbers.filter((n: any) => gameState.drawnNumbers.includes(n)); });
       setManualMarks(newMarks);
     }
   };
@@ -435,7 +436,7 @@ export default function Home() {
         <div className="text-center mb-6 z-10 px-4 flex flex-col items-center relative mt-4">
           <div className="relative">
             <div className="absolute inset-0 bg-[#F29188] blur-3xl opacity-20 rounded-full animate-pulse"></div>
-            <img src="/logo.png" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
+            <img src="/logo.jpg" alt="Bingo de la Familia" className="w-48 h-48 md:w-64 md:h-64 object-cover rounded-full shadow-[0_0_50px_rgba(0,0,0,0.8)] border-[6px] border-[#4B68BF]/30 relative z-10" />
           </div>
         </div>
 
@@ -555,7 +556,7 @@ export default function Home() {
 
   const isWaiting = gameState.status === 'waiting';
   const baseCards = isWaiting ? cards : myCards;
-  const filteredCards = searchTerm ? baseCards.filter(c => c.id.includes(searchTerm)) : baseCards;
+  const filteredCards = searchTerm ? baseCards.filter((c: any) => c.id.includes(searchTerm)) : baseCards;
   const visibleCards = filteredCards.slice(0, visibleCount);
   
   const lastDrawnNumber = gameState.drawnNumbers.length > 0 ? gameState.drawnNumbers[gameState.drawnNumbers.length - 1] : null;
@@ -679,56 +680,62 @@ export default function Home() {
           </div>
         </div>
         
-        {isWaiting && !hasPaid && (
-          <div className="px-4 py-4 rounded-2xl flex flex-col md:flex-row items-center justify-center gap-3 bg-[#F22613]/10 border-2 border-[#F22613]/30 text-[#F22613] shadow-inner text-center">
-            <Lock className="w-6 h-6 animate-pulse" />
-            <span className="font-black uppercase tracking-widest text-sm">Tablero Bloqueado por falta de pago</span>
-          </div>
-        )}
-
-        {isWaiting && hasPaid && (
-          <div className={`px-4 py-4 rounded-2xl flex flex-col lg:flex-row items-center justify-between gap-4 transition-colors border-2 ${isReady ? 'bg-green-50 border-green-300 shadow-inner' : 'bg-white border-[#4B68BF]/30 shadow-sm'}`}>
-            <div className="text-center lg:text-left">
-              <p className={`font-black text-sm md:text-base ${isReady ? 'text-green-700' : 'text-slate-700'}`}>
-                Cartones Seleccionados: {myCards.length} <span className="text-xs font-bold text-slate-400">(Máx {maxCards})</span>
-              </p>
-              {!isReady && <p className="text-xs font-bold text-[#4B68BF] mt-0.5">Elegí tus cartones (Podés tocarlos de nuevo para soltarlos).</p>}
-              {isReady && <p className="text-xs font-bold text-green-600 mt-0.5">¡Cartones confirmados! Esperando al administrador...</p>}
+        {/* EL TABLERO PRINCIPAL DE CARTONES SIEMPRE VISIBLE */}
+        <div className="max-w-7xl mx-auto py-8">
+          
+          {/* AVISO GIGANTE SI NO PAGÓ AÚN */}
+          {isWaiting && !hasPaid && (
+            <div className="mb-8 bg-red-50 border-2 border-red-200 p-6 rounded-2xl text-center shadow-sm mx-4 md:mx-0">
+              <div className="flex justify-center mb-3"><Lock className="w-10 h-10 text-red-500" /></div>
+              <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Falta Confirmar Pago</h2>
+              <p className="text-slate-600 font-medium text-sm">Podés ir eligiendo tus cartones en la lista de abajo, pero <strong className="text-red-600">no participarán del sorteo</strong> hasta que el organizador confirme tu pago y te habilite el botón verde.</p>
             </div>
-            {myCards.length > 0 && (
-              <div className="flex flex-wrap md:flex-nowrap gap-2 w-full lg:w-auto">
-                {!isReady && (
-                  <button onClick={handleDropAll} className="flex-1 lg:flex-none px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-sm bg-red-50 text-[#F22613] hover:bg-red-100 border border-red-200 flex items-center justify-center gap-2">
-                    <Trash2 className="w-4 h-4" /> Soltar Todos
-                  </button>
-                )}
-                <button onClick={handleToggleReady} className={`flex-1 lg:flex-none px-6 py-3 rounded-xl font-black text-sm transition-all shadow-sm ${isReady ? 'bg-slate-200 text-slate-600 hover:bg-slate-300 border border-slate-300' : 'bg-green-500 text-white hover:bg-green-400 hover:-translate-y-0.5 shadow-[0_0_15px_rgba(34,197,94,0.4)] border border-green-600'}`}>
-                  {isReady ? 'Modificar Selección' : '¡Estoy Listo!'}
-                </button>
+          )}
+
+          {isWaiting && hasPaid && (
+            <div className={`mb-6 px-4 py-4 rounded-2xl flex flex-col lg:flex-row items-center justify-between gap-4 transition-colors border-2 mx-4 md:mx-0 ${isReady ? 'bg-green-50 border-green-300 shadow-inner' : 'bg-white border-[#4B68BF]/30 shadow-sm'}`}>
+              <div className="text-center lg:text-left">
+                <p className={`font-black text-sm md:text-base ${isReady ? 'text-green-700' : 'text-slate-700'}`}>
+                  Cartones Seleccionados: {myCards.length} <span className="text-xs font-bold text-slate-400">(Máx {maxCards})</span>
+                </p>
+                {!isReady && <p className="text-xs font-bold text-[#4B68BF] mt-0.5">Elegí tus cartones en la lista y luego confirmá acá abajo.</p>}
+                {isReady && <p className="text-xs font-bold text-green-600 mt-0.5">¡Cartones confirmados! Esperando al administrador...</p>}
               </div>
-            )}
-          </div>
-        )}
+              {myCards.length > 0 && (
+                <div className="flex flex-wrap md:flex-nowrap gap-2 w-full lg:w-auto">
+                  {!isReady && (
+                    <button onClick={handleDropAll} className="flex-1 lg:flex-none px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-sm bg-red-50 text-[#F22613] hover:bg-red-100 border border-red-200 flex items-center justify-center gap-2">
+                      <Trash2 className="w-4 h-4" /> Soltar Todos
+                    </button>
+                  )}
+                  <button onClick={handleToggleReady} className={`flex-1 lg:flex-none px-6 py-3 rounded-xl font-black text-sm transition-all shadow-sm ${isReady ? 'bg-slate-200 text-slate-600 hover:bg-slate-300 border border-slate-300' : 'bg-green-500 text-white hover:bg-green-400 hover:-translate-y-0.5 shadow-[0_0_15px_rgba(34,197,94,0.4)] border border-green-600'}`}>
+                    {isReady ? 'Modificar Selección' : '¡Estoy Listo!'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
-        {!isWaiting && (
-          <div className="bg-[#010326] rounded-2xl p-2 md:p-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] overflow-hidden flex items-center relative border border-slate-800">
-            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest absolute top-1.5 left-4">Sorteo</div>
-            <div className="flex-shrink-0 flex flex-col items-center justify-center mt-3 ml-2 border-r border-slate-700 pr-4">
-              {lastDrawnNumber ? (
-                <div className="w-[50px] h-[50px] md:w-[60px] md:h-[60px] bg-gradient-to-br from-green-400 to-green-600 text-white text-2xl md:text-3xl font-black rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.6)] animate-pulse border-2 border-white/20">{lastDrawnNumber}</div>
-              ) : (
-                <div className="w-[50px] h-[50px] md:w-[60px] md:h-[60px] bg-slate-800 text-slate-600 text-3xl font-black rounded-full flex items-center justify-center shadow-inner border border-slate-700">-</div>
-              )}
+          {!isWaiting && (
+            <div className="bg-[#010326] rounded-2xl p-2 md:p-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] overflow-hidden flex items-center relative border border-slate-800 mx-4 md:mx-0 mb-6">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest absolute top-1.5 left-4">Sorteo</div>
+              <div className="flex-shrink-0 flex flex-col items-center justify-center mt-3 ml-2 border-r border-slate-700 pr-4">
+                {lastDrawnNumber ? (
+                  <div className="w-[50px] h-[50px] md:w-[60px] md:h-[60px] bg-gradient-to-br from-green-400 to-green-600 text-white text-2xl md:text-3xl font-black rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.6)] animate-pulse border-2 border-white/20">{lastDrawnNumber}</div>
+                ) : (
+                  <div className="w-[50px] h-[50px] md:w-[60px] md:h-[60px] bg-slate-800 text-slate-600 text-3xl font-black rounded-full flex items-center justify-center shadow-inner border border-slate-700">-</div>
+                )}
+              </div>
+              <div ref={historyScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide flex-nowrap px-3 pt-4 pb-1 w-full items-center smooth-scroll">
+                {previousNumbers.length > 0 ? previousNumbers.map((num: number, i: number) => (
+                  <div key={i} className="flex-shrink-0 flex items-center justify-center font-black rounded-full min-w-[34px] h-[34px] md:min-w-[40px] md:h-[40px] bg-slate-800 text-slate-300 text-xs md:text-sm shadow-inner border border-slate-700">{num}</div>
+                )) : (
+                  <span className="text-slate-500 font-medium text-xs mt-1">Historial vacío...</span>
+                )}
+              </div>
             </div>
-            <div ref={historyScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide flex-nowrap px-3 pt-4 pb-1 w-full items-center smooth-scroll">
-              {previousNumbers.length > 0 ? previousNumbers.map((num: number, i: number) => (
-                <div key={i} className="flex-shrink-0 flex items-center justify-center font-black rounded-full min-w-[34px] h-[34px] md:min-w-[40px] md:h-[40px] bg-slate-800 text-slate-300 text-xs md:text-sm shadow-inner border border-slate-700">{num}</div>
-              )) : (
-                <span className="text-slate-500 font-medium text-xs mt-1">Historial vacío...</span>
-              )}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
       {/* BLOQUE DE PUBLICIDADES CON CARRUSEL INFINITO AUTOMÁTICO */}
@@ -776,6 +783,46 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* LA GRILLA MAGICA DE CARTONES SE MUESTRA SIEMPRE */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {isWaiting && (
+          <div className="mb-8 z-20">
+            <input type="number" placeholder="🔍 Buscar cartón por número..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-4 md:p-5 bg-white border-2 border-slate-200 rounded-2xl text-lg font-bold text-[#010326] shadow-lg shadow-slate-200/50 focus:border-[#4B68BF] focus:ring-4 focus:ring-[#4B68BF]/10 outline-none transition-all placeholder:text-slate-400" />
+          </div>
+        )}
+
+        {!isWaiting && (
+          <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-end border-b-2 border-slate-200 pb-4 gap-4">
+            <div className="flex-1">
+              <h2 className="text-2xl md:text-3xl font-black text-[#010326] tracking-tight">Tus Cartones</h2>
+              {markMode === 'auto' ? (
+                <p className="text-slate-500 text-sm font-bold mt-1">El marcado es 100% automático.</p>
+              ) : (
+                <p className="text-[#4B68BF] text-sm md:text-base font-black mt-1 animate-pulse">👉 MODO MANUAL: Tocá los números sorteados para marcarlos.</p>
+              )}
+            </div>
+            <div className="flex bg-slate-200 p-1.5 rounded-xl shadow-inner w-full md:w-auto">
+                <button onClick={() => handleModeSwitch('auto')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${markMode === 'auto' ? 'bg-white text-[#4B68BF] shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Automático</button>
+                <button onClick={() => handleModeSwitch('manual')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${markMode === 'manual' ? 'bg-white text-[#4B68BF] shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>Manual</button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+          {visibleCards.map((card: any) => (
+            <BingoCard key={card.id} card={card} userId={userId} drawnNumbers={gameState.drawnNumbers} onSelect={handleSelect} gameStatus={gameState.status} markMode={markMode} manualMarks={manualMarks[card.id] || []} onMarkNumber={handleMarkNumber} isReady={isReady} />
+          ))}
+        </div>
+
+        {isWaiting && visibleCards.length < filteredCards.length && (
+          <div className="mt-10 text-center">
+            <button onClick={() => setVisibleCount(prev => prev + 20)} className="w-full md:w-auto bg-white border-2 border-slate-200 text-[#010326] font-black text-lg px-10 py-4 rounded-2xl hover:border-[#4B68BF] hover:text-[#4B68BF] hover:bg-slate-50 active:scale-95 transition-all shadow-sm">
+              Cargar más cartones ↓
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* MODAL DE PUBLICIDAD A PANTALLA COMPLETA */}
       {selectedAd && (
@@ -923,6 +970,53 @@ export default function Home() {
               <span className="text-5xl md:text-6xl">${bingoWinners[0]?.prize}</span>
             </div>
             <button onClick={() => window.location.reload()} className="w-full bg-[#010326] text-white px-8 py-5 rounded-2xl font-black text-xl hover:bg-[#4B68BF] active:scale-95 transition-all shadow-xl">Cerrar y Ver Tablero</button>
+          </div>
+        </div>
+      )}
+      
+      {/* MODAL DEL TUTORIAL INTERNO */}
+      {showTutorial && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#010326]/90 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowTutorial(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#F29188] p-5 flex justify-between items-center text-[#010326]">
+              <div className="flex items-center gap-2"><Info className="w-6 h-6" /><h3 className="font-black uppercase tracking-wider text-base">¿Cómo Jugar?</h3></div>
+              <button onClick={() => setShowTutorial(false)} className="hover:bg-black/10 p-1.5 rounded-full transition-colors" title="Cerrar"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-600 bg-slate-50">
+              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="bg-blue-100 p-3 rounded-full text-[#4B68BF] shrink-0"><Ticket className="w-6 h-6"/></div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">1. Elegí tus cartones</h4>
+                  <p className="mt-1 font-medium leading-snug">Seleccioná los cartones que más te gusten haciendo clic sobre ellos. Luego apretá el botón verde que dice "¡Estoy Listo!".</p>
+                </div>
+              </div>
+              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="bg-red-100 p-3 rounded-full text-[#F22613] shrink-0"><Lock className="w-6 h-6"/></div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">2. Confirmá tu pago</h4>
+                  <p className="mt-1 font-medium leading-snug">Tus cartones seleccionados quedarán bloqueados de forma segura hasta que te comuniques con el vendedor y él confirme tu pago.</p>
+                </div>
+              </div>
+              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="bg-purple-100 p-3 rounded-full text-purple-600 shrink-0"><RefreshCw className="w-6 h-6"/></div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">3. Automático o Manual</h4>
+                  <p className="mt-1 font-medium leading-snug">Durante el sorteo, podés dejar que el sistema marque los números solos (Automático) o ir tocándolos vos mismo por diversión (Manual).</p>
+                </div>
+              </div>
+              <div className="flex gap-4 items-start bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="bg-yellow-100 p-3 rounded-full text-yellow-600 shrink-0"><Trophy className="w-6 h-6"/></div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-base uppercase tracking-tight">4. ¡Ganar!</h4>
+                  <p className="mt-1 font-medium leading-snug">No hace falta gritar bingo. Si sos el primero en completar la línea o el cartón, ¡el sistema avisará a todos y te mostrará como ganador al instante!</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-200 bg-white text-center">
+              <button onClick={() => setShowTutorial(false)} className="w-full bg-[#4B68BF] text-white px-6 py-4 rounded-xl font-black hover:bg-blue-700 transition-colors uppercase tracking-widest text-sm shadow-md">
+                ¡Entendido!
+              </button>
+            </div>
           </div>
         </div>
       )}
