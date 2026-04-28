@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '../../lib/firebase';
+import { db, auth } from '../../lib/firebase';
 import { ref, update, set } from 'firebase/database';
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { useBingoRealtime } from '../../hooks/useBingoRealtime';
 import { generateCards } from '../../lib/generator';
 import { WinningMode, WinnerInfo } from '../types/bingo';
@@ -11,13 +12,48 @@ import {
   Trophy, Banknote, Play, Square, RotateCcw, 
   RefreshCw, Settings, Users, CheckCircle2, 
   Trash2, MonitorPlay, Ticket, Activity, Award,
-  Dices, Phone, MessageCircle, Clock, ListChecks, Filter,
+  Dices, Phone, MessageCircle, Clock, ListChecks,
   History, Music, Pause, Radio, Megaphone, MapPin, Image as ImageIcon, Store, Pencil,
-  Lock, Unlock
+  Lock, Unlock, LogOut
 } from 'lucide-react';
 import ReactPlayer from 'react-player';
 
 export default function AdminPanel() {
+  // ==========================================
+  // SISTEMA DE LOGIN PARA ADMIN CON FIREBASE AUTH
+  // ==========================================
+  const [isAdminLogged, setIsAdminLogged] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPass, setAdminPass] = useState('');
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAdminLogged(true);
+      } else {
+        setIsAdminLogged(false);
+      }
+      setIsCheckingSession(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+    } catch (error) {
+      alert('❌ Correo o contraseña incorrectos');
+      setAdminPass('');
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    await signOut(auth);
+  };
+  // ==========================================
+
   const { gameState, users, cards, ads, setPlayerLimit, resetPlayerCards, toggleUserPayment, addAd, toggleAd, deleteAd } = useBingoRealtime();
   const [drawInput, setDrawInput] = useState('');
   const [isInitializing, setIsInitializing] = useState(false);
@@ -222,6 +258,52 @@ export default function AdminPanel() {
     return true;
   });
 
+  // PANTALLA DE LOGIN DEL ADMINISTRADOR
+  if (isCheckingSession) return <div className="min-h-screen bg-[#010326]"></div>;
+
+  if (!isAdminLogged) {
+    return (
+      <div className="min-h-screen bg-[#010326] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-10">
+           <MonitorPlay className="absolute top-[20%] left-[10%] w-24 h-24 text-[#4B68BF]" />
+           <Lock className="absolute bottom-[20%] right-[15%] w-32 h-32 text-[#F29188]" />
+        </div>
+
+        <div className="bg-white/10 p-8 md:p-10 rounded-[2.5rem] border border-[#4B68BF]/30 backdrop-blur-md max-w-sm w-full text-center shadow-[0_0_50px_rgba(0,0,0,0.5)] relative z-10">
+          <div className="bg-[#4B68BF]/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-[#4B68BF]/50">
+            <Lock className="w-10 h-10 text-[#F29188]" />
+          </div>
+          <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-widest">Área Restringida</h2>
+          <p className="text-slate-400 text-xs font-medium mb-8">Solo personal autorizado</p>
+          
+          <form onSubmit={handleAdminLogin} className="space-y-4">
+            <input 
+              type="email" 
+              required 
+              value={adminEmail} 
+              onChange={(e) => setAdminEmail(e.target.value)} 
+              placeholder="Correo electrónico" 
+              className="w-full bg-[#010326]/50 border border-slate-600 py-4 px-4 rounded-xl text-white font-bold focus:outline-none focus:border-[#F29188] transition-colors text-center tracking-widest placeholder:tracking-normal placeholder:text-slate-500" 
+            />
+            <input 
+              type="password" 
+              required 
+              value={adminPass} 
+              onChange={(e) => setAdminPass(e.target.value)} 
+              placeholder="Contraseña" 
+              className="w-full bg-[#010326]/50 border border-slate-600 py-4 px-4 rounded-xl text-white font-bold focus:outline-none focus:border-[#F29188] transition-colors text-center tracking-widest placeholder:tracking-normal placeholder:text-slate-500" 
+            />
+            <button type="submit" className="w-full mt-2 bg-[#4B68BF] text-white font-black text-sm py-4 rounded-xl shadow-[0_5px_15px_rgba(75,104,191,0.4)] hover:bg-blue-600 active:scale-95 transition-all uppercase tracking-widest">
+              Ingresar
+            </button>
+          </form>
+          <Link href="/" className="block mt-6 text-xs text-slate-500 hover:text-white transition-colors">← Volver al juego</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // EL PANEL DE ADMIN NORMAL
   return (
     <div className="min-h-screen bg-[#010326] text-[#F2F2F2] p-4 md:p-8 font-sans selection:bg-[#4B68BF]/30 relative overflow-x-hidden">
       
@@ -266,6 +348,12 @@ export default function AdminPanel() {
             )}
             <div className="flex flex-wrap justify-center gap-3">
                 <Link href="/admin/historial" className="flex items-center gap-2 bg-[#4B68BF]/20 text-[#4B68BF] border border-[#4B68BF]/50 px-6 py-3 rounded-xl font-black hover:bg-[#4B68BF]/30 transition-all text-sm shadow-md"><History className="w-4 h-4" /> Auditoría</Link>
+                
+                {/* BOTÓN PARA CERRAR SESIÓN DEL ADMIN */}
+                <button onClick={handleAdminLogout} className="flex items-center gap-2 bg-slate-800 text-slate-300 border border-slate-700 px-6 py-3 rounded-xl font-black hover:bg-slate-700 hover:text-white transition-all text-sm shadow-md" title="Salir del panel">
+                  <LogOut className="w-4 h-4" /> Salir
+                </button>
+
                 <button onClick={initDatabase} disabled={isInitializing} className="flex items-center gap-2 bg-[#F2F2F2] text-[#010326] border border-[#F2F2F2] px-6 py-3 rounded-xl font-black hover:bg-gray-300 transition-all text-sm shadow-md"><RotateCcw className="w-4 h-4" /> Reset DB</button>
                 
                 <button onClick={toggleGameLock} className={`flex items-center gap-2 border px-6 py-3 rounded-xl font-black transition-all text-sm shadow-md ${gameState.isGameLocked ? 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600' : 'bg-slate-700 text-white border-slate-600 hover:bg-slate-800'}`}>
@@ -428,7 +516,6 @@ export default function AdminPanel() {
 
             <div className="space-y-4 flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4B68BF]/50 pb-4">
               {filteredUsers.map((user: any, index: number) => {
-                // ACÁ ESTABA EL ERROR EXACTO. LO ARREGLAMOS PONIENDO (a: any, b: any)
                 const winsArray = user.winHistory ? Object.values(user.winHistory).sort((a: any, b: any) => b.timestamp - a.timestamp) : [];
                 return (
                   <div key={user.id || `user-${index}`} className={`bg-white/5 p-5 rounded-2xl border transition-all shadow-sm relative ${user.hasPaidCards ? 'border-emerald-500/30 hover:border-emerald-500/60' : 'border-[#4B68BF]/20 hover:border-[#F29188]/50'}`}>

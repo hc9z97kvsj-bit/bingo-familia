@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
+import { getAuth } from 'firebase/auth'; // <-- AGREGADO PARA EL LOGIN
 
 const firebaseConfig = {
   apiKey: "AIzaSyBMwmIhO05GYAH-KSVua8VSvu9b-7pbVAw",
@@ -15,5 +16,6 @@ const firebaseConfig = {
 // Inicializamos Firebase evitando duplicados en recargas de Next.js
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app); // <-- AGREGADO PARA EL LOGIN
 
-export { db };
+export { db, auth };
