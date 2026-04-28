@@ -12,7 +12,7 @@ import {
   Trophy, Banknote, Play, Square, RotateCcw, 
   RefreshCw, Settings, Users, CheckCircle2, 
   Trash2, MonitorPlay, Ticket, Activity, Award,
-  Dices, Phone, MessageCircle, Clock, ListChecks,
+  Dices, Phone, MessageCircle, Clock, ListChecks, Filter,
   History, Music, Pause, Radio, Megaphone, MapPin, Image as ImageIcon, Store, Pencil,
   Lock, Unlock, LogOut
 } from 'lucide-react';
@@ -349,7 +349,6 @@ export default function AdminPanel() {
             <div className="flex flex-wrap justify-center gap-3">
                 <Link href="/admin/historial" className="flex items-center gap-2 bg-[#4B68BF]/20 text-[#4B68BF] border border-[#4B68BF]/50 px-6 py-3 rounded-xl font-black hover:bg-[#4B68BF]/30 transition-all text-sm shadow-md"><History className="w-4 h-4" /> Auditoría</Link>
                 
-                {/* BOTÓN PARA CERRAR SESIÓN DEL ADMIN */}
                 <button onClick={handleAdminLogout} className="flex items-center gap-2 bg-slate-800 text-slate-300 border border-slate-700 px-6 py-3 rounded-xl font-black hover:bg-slate-700 hover:text-white transition-all text-sm shadow-md" title="Salir del panel">
                   <LogOut className="w-4 h-4" /> Salir
                 </button>
@@ -517,9 +516,15 @@ export default function AdminPanel() {
             <div className="space-y-4 flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#4B68BF]/50 pb-4">
               {filteredUsers.map((user: any, index: number) => {
                 const winsArray = user.winHistory ? Object.values(user.winHistory).sort((a: any, b: any) => b.timestamp - a.timestamp) : [];
+                
+                // NUEVO: OBTENER LOS CARTONES ESPECÍFICOS DEL USUARIO PARA MOSTRARLOS
+                const userCards = cards.filter((c: any) => c.ownerId === user.id);
+                const isSelecting = userCards.length > 0 && !user.isReady;
+
                 return (
                   <div key={user.id || `user-${index}`} className={`bg-white/5 p-5 rounded-2xl border transition-all shadow-sm relative ${user.hasPaidCards ? 'border-emerald-500/30 hover:border-emerald-500/60' : 'border-[#4B68BF]/20 hover:border-[#F29188]/50'}`}>
                     <button aria-label="Eliminar Jugador" title="Eliminar Jugador" onClick={() => deleteUser(user.id)} className="absolute top-4 right-4 text-slate-500 hover:text-[#F22613] transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    
                     <div className="mb-4 pr-6">
                       <div className="flex items-center gap-2 mb-1">
                         <div className={`w-2.5 h-2.5 rounded-full ${user.isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-slate-600'}`}></div>
@@ -528,6 +533,27 @@ export default function AdminPanel() {
                       <div className="flex flex-wrap gap-x-4 gap-y-2 text-[10px] text-[#F2F2F2]/60 font-medium mt-2">
                         <span className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-[#4B68BF]" /> {user.phone || '-'}</span>
                         <span className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-[#4B68BF]" /> {user.isOnline ? `Online: ${formatUptime(user.lastLoginAt)}` : 'Offline'}</span>
+                      </div>
+                    </div>
+
+                    {/* NUEVO: PANEL QUE MUESTRA QUÉ CARTONES ESTÁ ELIGIENDO */}
+                    <div className="mb-4 bg-[#010326]/30 rounded-xl p-3 border border-white/5">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <Ticket className="w-3 h-3" /> Cartones ({userCards.length}/{user.maxCards || 6})
+                        </span>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-widest ${user.isReady ? 'bg-emerald-500/20 text-emerald-400' : isSelecting ? 'bg-amber-500/20 text-amber-400 animate-pulse' : 'bg-slate-500/20 text-slate-400'}`}>
+                          {user.isReady ? 'Listo' : isSelecting ? 'Eligiendo...' : 'Esperando'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {userCards.length > 0 ? userCards.map((c: any) => (
+                          <span key={c.id} className="bg-[#4B68BF]/20 text-[#4B68BF] border border-[#4B68BF]/30 px-2 py-1 rounded text-xs font-black">
+                            #{c.id}
+                          </span>
+                        )) : (
+                          <span className="text-xs text-slate-500 font-medium">Ningún cartón seleccionado</span>
+                        )}
                       </div>
                     </div>
 
